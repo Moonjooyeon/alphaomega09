@@ -476,6 +476,17 @@ function imageFileToInlineData(file, maxSize = 1024, quality = 0.72) {
   });
 }
 
+function describeApiError(status, error) {
+  const message = error?.message || "";
+  if (status === 429 && /prepayment credits are depleted/i.test(message)) {
+    return "Gemini 프로젝트의 선불 크레딧이 소진되었습니다. AI Studio에서 결제/크레딧을 충전하거나 다른 API 키로 교체해 주십시오.";
+  }
+  if (status === 404 && /no longer available|not found/i.test(message)) {
+    return "현재 API 키에서 이 Gemini 모델을 사용할 수 없습니다. Netlify 재배포가 끝났는지 확인하거나 GEMINI_MODEL 값을 갱신해 주십시오.";
+  }
+  return message || error?.status || "사유 미상";
+}
+
 // 출입 코드 — 지인에게 알려줄 값을 여기 적으세요
 const PASSCODE = "che-i";
 
@@ -836,7 +847,7 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
       }
 
       if (!res.ok || j.error) {
-        return fail(`요청이 거부되었습니다 (HTTP ${res.status}) — ${j?.error?.message || j?.error?.status || "사유 미상"}`);
+        return fail(`요청이 거부되었습니다 (HTTP ${res.status}) — ${describeApiError(res.status, j?.error)}`);
       }
 
       const raw = (j.candidates || [])
