@@ -1,11 +1,6 @@
 import { useState, useRef } from "react";
 
-const GEMINI_MODEL = "gemini-2.5-flash-lite";
-const GEMINI_THINKING_BUDGET = 2048;
-const getGeminiApiKey = () =>
-  (typeof window !== "undefined" &&
-    (window.GEMINI_API_KEY || window.localStorage?.getItem("GEMINI_API_KEY"))) ||
-  "";
+const GEMINI_PROXY_ENDPOINT = "/.netlify/functions/gemini";
 
 /* ─────────────────────────────────────────────
    성선의학연구소 — 개체 감별 및 교차반응 검사
@@ -782,16 +777,9 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
     };
 
     try {
-      let apiKey = getGeminiApiKey().trim();
-      if (!apiKey && typeof window !== "undefined") {
-        apiKey = window.prompt("Gemini API 키를 입력해 주세요.")?.trim() || "";
-        if (apiKey) window.localStorage?.setItem("GEMINI_API_KEY", apiKey);
-      }
-      if (!apiKey) return fail("Gemini API 키가 필요합니다. window.GEMINI_API_KEY 또는 localStorage.GEMINI_API_KEY에 설정해 주십시오.");
-
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
+      const res = await fetch(GEMINI_PROXY_ENDPOINT, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ role: "user", parts }],
           generationConfig: {
@@ -799,9 +787,6 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
             temperature: 0.72,
             topP: 0.9,
             responseMimeType: "application/json",
-            thinkingConfig: {
-              thinkingBudget: GEMINI_THINKING_BUDGET,
-            },
           },
         }),
       });
