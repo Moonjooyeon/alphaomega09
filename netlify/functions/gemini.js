@@ -7,7 +7,7 @@ const OUTPUT_USD_PER_MILLION = Number(process.env.GEMINI_OUTPUT_USD_PER_MILLION 
 const USAGE_STORE = "gemini-usage";
 
 async function getUsageStore(event) {
-  if (!process.env.NETLIFY) {
+  if (process.env.NETLIFY_LOCAL === "true") {
     const fs = await import("node:fs/promises");
     const path = await import("node:path");
     const root = path.join(process.cwd(), ".netlify", "local-blobs", USAGE_STORE);

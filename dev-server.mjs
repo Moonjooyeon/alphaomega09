@@ -6,6 +6,7 @@ const require = createRequire(import.meta.url);
 const { handler: geminiHandler } = require("./netlify/functions/gemini.js");
 
 const port = Number(process.env.PORT || 8888);
+process.env.NETLIFY_LOCAL = "true";
 
 function loadDotEnv() {
   try {
