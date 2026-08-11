@@ -5,6 +5,7 @@ const USD_TO_KRW = Number(process.env.USD_TO_KRW || 1400);
 const INPUT_USD_PER_MILLION = Number(process.env.GEMINI_INPUT_USD_PER_MILLION || 0.1);
 const OUTPUT_USD_PER_MILLION = Number(process.env.GEMINI_OUTPUT_USD_PER_MILLION || 0.4);
 const USAGE_STORE = "gemini-usage";
+const MAX_REQUEST_BYTES = Number(process.env.MAX_REQUEST_BYTES || 4_500_000);
 
 async function getUsageStore(event) {
   if (process.env.NETLIFY_LOCAL === "true") {
@@ -107,6 +108,11 @@ function json(statusCode, body) {
   };
 }
 
+function getRequestBodyText(event) {
+  if (!event.body) return "{}";
+  return event.isBase64Encoded ? Buffer.from(event.body, "base64").toString("utf8") : event.body;
+}
+
 exports.handler = async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
     return {
@@ -146,9 +152,14 @@ exports.handler = async function handler(event) {
     });
   }
 
+  const requestText = getRequestBodyText(event);
+  if (Buffer.byteLength(requestText, "utf8") > MAX_REQUEST_BYTES) {
+    return json(413, { error: { message: "요청 이미지가 너무 큽니다. 더 작은 이미지로 다시 접수해 주십시오." } });
+  }
+
   let requestBody;
   try {
-    requestBody = JSON.parse(event.body || "{}");
+    requestBody = JSON.parse(requestText);
   } catch {
     return json(400, { error: { message: "요청 본문이 올바른 JSON이 아닙니다." } });
   }

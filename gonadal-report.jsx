@@ -445,6 +445,37 @@ function caseNo() {
   )}`;
 }
 
+function imageFileToInlineData(file, maxSize = 1024, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = () => resolve({ data: String(reader.result).split(",")[1], mime: file.type || "application/octet-stream" });
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve({ data: dataUrl.split(",")[1], mime: "image/jpeg" });
+      };
+      img.onerror = reject;
+      img.src = String(reader.result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 // 출입 코드 — 지인에게 알려줄 값을 여기 적으세요
 const PASSCODE = "che-i";
 
@@ -617,19 +648,20 @@ export default function GonadalReport() {
   const set = (i, k, v) =>
     setSubj((s) => s.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
 
-  const pick = (i, f) => {
+  const pick = async (i, f) => {
     if (!f) return;
-    const r = new FileReader();
-    r.onload = () => {
+    try {
+      const img = await imageFileToInlineData(f);
       setSubj((prev) =>
         prev.map((x, j) =>
           j === i
-            ? { ...x, img: String(r.result).split(",")[1], mime: f.type, adj: { ...DEF_ADJ } }
+            ? { ...x, img: img.data, mime: img.mime, adj: { ...DEF_ADJ } }
             : x
         )
       );
-    };
-    r.readAsDataURL(f);
+    } catch {
+      setErr("이미지를 읽지 못했습니다. 다른 파일로 다시 선택해 주십시오.");
+    }
   };
 
   const missing = [];
@@ -639,11 +671,14 @@ export default function GonadalReport() {
     if (!s.line.trim()) missing.push(`${tag} 한 줄`);
   });
 
-  const pickPair = (f) => {
+  const pickPair = async (f) => {
     if (!f) return;
-    const r = new FileReader();
-    r.onload = () => setPair({ img: String(r.result).split(",")[1], mime: f.type, adj: { ...DEF_ADJ } });
-    r.readAsDataURL(f);
+    try {
+      const img = await imageFileToInlineData(f);
+      setPair({ img: img.data, mime: img.mime, adj: { ...DEF_ADJ } });
+    } catch {
+      setErr("이미지를 읽지 못했습니다. 다른 파일로 다시 선택해 주십시오.");
+    }
   };
 
   const nm = (i, d) => subj[i].name.trim() || d;
@@ -791,11 +826,13 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
         }),
       });
 
+      const responseText = await res.text();
       let j;
       try {
-        j = await res.json();
+        j = JSON.parse(responseText);
       } catch {
-        return fail(`서버 응답을 읽지 못했습니다 (HTTP ${res.status}).`);
+        const detail = responseText.replace(/\s+/g, " ").trim().slice(0, 180);
+        return fail(`서버 응답을 읽지 못했습니다 (HTTP ${res.status})${detail ? ` — ${detail}` : ""}`);
       }
 
       if (!res.ok || j.error) {
