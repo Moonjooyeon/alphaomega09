@@ -45,16 +45,16 @@ async function getUsageStore(event) {
 
   const { connectLambda, getStore } = await import("@netlify/blobs");
   connectLambda(event);
-  return getStore({ name: USAGE_STORE, consistency: "strong" });
+  return getStore({ name: USAGE_STORE });
 }
 
 async function readUsage(store) {
-  const listed = await store.list({ prefix: "requests/" });
   const usage = { requests: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, costKrw: 0 };
+  const listed = await store.list({ prefix: "requests/" });
 
   await Promise.all(
     listed.blobs.map(async ({ key }) => {
-      const entry = await store.get(key, { type: "json", consistency: "strong" });
+      const entry = await store.get(key, { type: "json" });
       if (!entry) return;
       usage.requests += 1;
       usage.inputTokens += Number(entry.inputTokens || 0);
