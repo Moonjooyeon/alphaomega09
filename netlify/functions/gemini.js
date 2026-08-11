@@ -1,9 +1,13 @@
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
+const REQUESTED_GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
+const GEMINI_MODEL =
+  REQUESTED_GEMINI_MODEL === "gemini-2.5-flash-lite"
+    ? "gemini-3.1-flash-lite"
+    : REQUESTED_GEMINI_MODEL;
 const GEMINI_THINKING_BUDGET = Number(process.env.GEMINI_THINKING_BUDGET || 2048);
 const COST_LIMIT_KRW = Number(process.env.GEMINI_COST_LIMIT_KRW || 10000);
 const USD_TO_KRW = Number(process.env.USD_TO_KRW || 1400);
-const INPUT_USD_PER_MILLION = Number(process.env.GEMINI_INPUT_USD_PER_MILLION || 0.1);
-const OUTPUT_USD_PER_MILLION = Number(process.env.GEMINI_OUTPUT_USD_PER_MILLION || 0.4);
+const INPUT_USD_PER_MILLION = Number(process.env.GEMINI_INPUT_USD_PER_MILLION || 0.25);
+const OUTPUT_USD_PER_MILLION = Number(process.env.GEMINI_OUTPUT_USD_PER_MILLION || 1.5);
 const USAGE_STORE = "gemini-usage";
 const MAX_REQUEST_BYTES = Number(process.env.MAX_REQUEST_BYTES || 4_500_000);
 
