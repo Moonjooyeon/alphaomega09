@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "build": "vite build",
     "dev": "node dev-server.mjs",
     "netlify:dev": "netlify dev",
     "vite": "vite --host 127.0.0.1"

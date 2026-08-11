@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 
 const GEMINI_PROXY_ENDPOINT = "/.netlify/functions/gemini";
 
