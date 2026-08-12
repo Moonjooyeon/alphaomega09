@@ -73,8 +73,10 @@ const CSS = `
 .gm-kwbtn{font-size:10.5px;padding:3px 9px;}
 .gm-entry{border-top:1px solid var(--grid);padding:15px 0 6px;}
 .gm-entry:first-of-type{border-top:none;padding-top:0;}
-.gm-entry-hd{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+.gm-entry-hd{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,240px);
+      align-items:start;gap:14px;margin-bottom:10px;}
 .gm-entry-hd>span{font-size:9px;letter-spacing:.2em;color:var(--ink2);}
+@media(max-width:640px){.gm-entry-hd{grid-template-columns:1fr;}.gm-entry-hd>span{order:-1;}}
 .gm-thumb{margin-left:auto;width:46px;height:46px;border:1px dashed var(--rule);background:transparent;
       font:inherit;font-size:8.5px;color:var(--ink2);cursor:pointer;padding:0;overflow:hidden;border-radius:0;}
 .gm-thumb img{width:100%;height:100%;object-fit:cover;filter:grayscale(.35);display:block;}
@@ -172,6 +174,8 @@ const CSS = `
 .gm-again{background:transparent;border:1px solid var(--ink);color:var(--ink);padding:9px 20px;
       font:inherit;font-size:11px;letter-spacing:.2em;cursor:pointer;border-radius:0;margin-top:13px;}
 .gm-again:hover{background:var(--ink);color:var(--form);}
+.gm-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:13px;}
+.gm-actions .gm-again{margin-top:0;}
 
 /* loading */
 .gm-load{padding:80px 26px;text-align:center;}
@@ -275,21 +279,46 @@ const CSS = `
 .gm-oneline button:hover{background:var(--ink);color:var(--form);}
 
 /* 이미지 조정 */
-.gm-adj{margin-left:auto;width:92px;flex:0 0 92px;}
+.gm-adj{margin-left:auto;width:100%;max-width:240px;}
 .gm-adj-wide{margin-left:0;width:100%;flex:none;}
 .gm-adj-view{border:1px dashed var(--rule);overflow:hidden;position:relative;
-    display:flex;align-items:center;justify-content:center;padding:6px;text-align:center;
+    display:flex;align-items:center;justify-content:center;padding:0;text-align:center;
     font-size:9px;letter-spacing:.1em;color:var(--ink2);cursor:pointer;touch-action:none;}
 .gm-adj-view:hover{border-color:var(--assay);}
 .gm-adj-view img{width:100%;height:100%;object-fit:cover;display:block;cursor:grab;
-    filter:grayscale(.4) contrast(1.06);user-select:none;-webkit-user-drag:none;}
+    filter:grayscale(.4) contrast(1.06);user-select:none;-webkit-user-drag:none;
+    transform-origin:50% 50%;will-change:transform;}
 .gm-adj-view img:active{cursor:grabbing;}
-.gm-adj-ctl{display:flex;align-items:center;gap:7px;padding-top:6px;}
-.gm-adj-ctl>span{font-size:8px;letter-spacing:.14em;color:var(--ink2);flex:0 0 auto;}
-.gm-adj-ctl input[type=range]{flex:1;min-width:24px;height:2px;accent-color:var(--assay);}
+.gm-adj-ctl{display:flex;justify-content:flex-end;gap:8px;padding-top:7px;}
 .gm-adj-ctl button{background:none;border:none;font:inherit;font-size:9px;color:var(--ink2);
     cursor:pointer;padding:0;text-decoration:underline;flex:0 0 auto;border-radius:0;}
 .gm-adj-ctl button:hover{color:var(--assay);}
+.gm-adj-tip{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(21,24,20,.78);
+    color:var(--form);font-size:8px;letter-spacing:.16em;padding:5px 6px;text-align:center;}
+.gm-crop-backdrop{position:fixed;inset:0;background:rgba(12,14,12,.72);z-index:20;
+    display:flex;align-items:center;justify-content:center;padding:18px;}
+.gm-crop-modal{width:min(620px,100%);background:var(--form);border:1px solid var(--ink);
+    box-shadow:4px 4px 0 rgba(0,0,0,.28);padding:18px;}
+.gm-crop-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.gm-crop-head b{font-size:12px;letter-spacing:.18em;}
+.gm-crop-head button{background:none;border:none;font:inherit;font-size:18px;line-height:1;cursor:pointer;color:var(--ink);}
+.gm-crop-stage{height:min(58vh,440px);border:1px solid var(--ink);background:#0f120f;
+    overflow:hidden;position:relative;touch-action:none;cursor:grab;}
+.gm-crop-stage:active{cursor:grabbing;}
+.gm-crop-stage img{width:100%;height:100%;object-fit:cover;display:block;
+    user-select:none;-webkit-user-drag:none;transform-origin:50% 50%;will-change:transform;}
+.gm-crop-mask{position:absolute;inset:0;box-shadow:inset 0 0 0 999px rgba(0,0,0,.22);
+    border:1px dashed rgba(252,252,248,.72);pointer-events:none;}
+.gm-crop-ctl{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;margin-top:14px;}
+.gm-crop-ctl span{font-size:9px;letter-spacing:.18em;color:var(--ink2);}
+.gm-crop-ctl input{width:100%;accent-color:var(--assay);}
+.gm-crop-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:15px;}
+.gm-crop-actions button{background:transparent;border:1px solid var(--ink);font:inherit;font-size:11px;
+    letter-spacing:.16em;padding:9px 15px;cursor:pointer;border-radius:0;color:var(--ink);}
+.gm-crop-actions button[data-primary="1"]{background:var(--ink);color:var(--form);}
+.gm-crop-actions button:hover{border-color:var(--assay);color:var(--assay);}
+.gm-crop-actions button[data-primary="1"]:hover{background:var(--assay);color:var(--form);}
+@media(max-width:540px){.gm-crop-modal{padding:14px}.gm-crop-stage{height:360px;}.gm-crop-ctl{grid-template-columns:1fr;}}
 .gm-photo-wrap{width:86px;height:108px;flex:0 0 86px;border:1px solid var(--rule);overflow:hidden;}
 .gm-photo-wrap img{width:100%;height:100%;object-fit:cover;display:block;
     filter:grayscale(.45) contrast(1.08) brightness(1.02);}
@@ -487,68 +516,108 @@ function describeApiError(status, error) {
   return message || error?.status || "사유 미상";
 }
 
+function imageTransform(adj = DEF_ADJ) {
+  return `scale(${adj.scale}) translate(${50 - adj.x}%, ${50 - adj.y}%)`;
+}
+
 // 출입 코드 — 지인에게 알려줄 값을 여기 적으세요
 const PASSCODE = "che-i";
 
 const DEF_ADJ = { scale: 1, x: 50, y: 50 };
 
-function Adjustable({ src, adj, onChange, onPick, height, placeholder, wide }) {
-  const box = useRef(null);
-  const drag = useRef(null);
-
-  const down = (e) => {
-    if (!src) return;
-    drag.current = { px: e.clientX, py: e.clientY, x: adj.x, y: adj.y };
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
-  };
-  const move = (e) => {
-    const d = drag.current;
-    if (!d || !box.current) return;
-    const r = box.current.getBoundingClientRect();
-    const nx = Math.min(100, Math.max(0, d.x - ((e.clientX - d.px) / r.width) * 90));
-    const ny = Math.min(100, Math.max(0, d.y - ((e.clientY - d.py) / r.height) * 90));
-    onChange({ ...adj, x: nx, y: ny });
-  };
-  const up = () => { drag.current = null; };
-
+function Adjustable({ src, adj, onChange, onPick, onEdit, height, placeholder, wide }) {
   return (
     <div className={wide ? "gm-adj gm-adj-wide" : "gm-adj"}>
       <div
         className="gm-adj-view"
-        ref={box}
         style={{ height }}
-        onPointerDown={down}
-        onPointerMove={move}
-        onPointerUp={up}
-        onPointerCancel={up}
-        onClick={() => { if (!src) onPick(); }}
+        onClick={() => { src ? onEdit?.() : onPick(); }}
       >
         {src ? (
           <img
             src={src}
             alt=""
             draggable={false}
-            style={{ objectPosition: `${adj.x}% ${adj.y}%`, transform: `scale(${adj.scale})` }}
+            style={{
+              transform: imageTransform(adj),
+            }}
           />
         ) : (
           <span>{placeholder}</span>
         )}
+        {src && <i className="gm-adj-tip">클릭하여 크게 조정</i>}
       </div>
       {src && (
         <div className="gm-adj-ctl">
+          <button onClick={onEdit}>조정</button>
+          <button onClick={onPick}>교체</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ImageCropModal({ crop, onChange, onCancel, onApply }) {
+  const box = useRef(null);
+  const drag = useRef(null);
+  if (!crop) return null;
+
+  const down = (e) => {
+    e.preventDefault();
+    drag.current = { px: e.clientX, py: e.clientY, x: crop.adj.x, y: crop.adj.y };
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
+  };
+  const move = (e) => {
+    const d = drag.current;
+    if (!d || !box.current) return;
+    const r = box.current.getBoundingClientRect();
+    const sensitivity = 100 / Math.max(1, crop.adj.scale);
+    const x = Math.min(100, Math.max(0, d.x + ((e.clientX - d.px) / r.width) * sensitivity));
+    const y = Math.min(100, Math.max(0, d.y + ((e.clientY - d.py) / r.height) * sensitivity));
+    onChange({ ...crop, adj: { ...crop.adj, x, y } });
+  };
+  const up = () => { drag.current = null; };
+
+  return (
+    <div className="gm-crop-backdrop" role="dialog" aria-modal="true">
+      <div className="gm-crop-modal">
+        <div className="gm-crop-head">
+          <b>{crop.title || "이미지 조정"}</b>
+          <button onClick={onCancel} aria-label="닫기">×</button>
+        </div>
+        <div
+          className="gm-crop-stage"
+          ref={box}
+          onPointerDown={down}
+          onPointerMove={move}
+          onPointerUp={up}
+          onPointerCancel={up}
+        >
+          <img
+            src={`data:${crop.mime};base64,${crop.img}`}
+            alt=""
+            draggable={false}
+            style={{ transform: imageTransform(crop.adj) }}
+          />
+          <div className="gm-crop-mask" />
+        </div>
+        <div className="gm-crop-ctl">
           <span>확대</span>
           <input
             type="range"
             min="1"
-            max="2.6"
-            step="0.02"
-            value={adj.scale}
-            onChange={(e) => onChange({ ...adj, scale: Number(e.target.value) })}
+            max="3"
+            step="0.01"
+            value={crop.adj.scale}
+            onChange={(e) => onChange({ ...crop, adj: { ...crop.adj, scale: Number(e.target.value) } })}
           />
-          <button onClick={() => onChange({ ...DEF_ADJ })}>초기화</button>
-          <button onClick={onPick}>교체</button>
+          <button className="gm-again" onClick={() => onChange({ ...crop, adj: { ...DEF_ADJ } })}>초기화</button>
         </div>
-      )}
+        <div className="gm-crop-actions">
+          <button onClick={onCancel}>취소</button>
+          <button data-primary="1" onClick={onApply}>적용</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -651,7 +720,9 @@ export default function GonadalReport() {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
   const [reject, setReject] = useState("");
+  const [crop, setCrop] = useState(null);
   const [no] = useState(caseNo);
+  const sheetRef = useRef(null);
   const files = [useRef(null), useRef(null)];
   const pairFile = useRef(null);
   const solo = mode === "개인 감별";
@@ -659,16 +730,82 @@ export default function GonadalReport() {
   const set = (i, k, v) =>
     setSubj((s) => s.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
 
+  const openCrop = (target, payload) => {
+    setCrop({
+      target,
+      img: payload.img,
+      mime: payload.mime,
+      adj: { ...(payload.adj || DEF_ADJ) },
+      title: payload.title || "이미지 조정",
+    });
+  };
+
+  const applyCrop = () => {
+    if (!crop) return;
+    if (crop.target.kind === "pair") {
+      setPair((prev) => ({ ...prev, img: crop.img, mime: crop.mime, adj: crop.adj }));
+    } else {
+      setSubj((prev) =>
+        prev.map((x, j) =>
+          j === crop.target.index ? { ...x, img: crop.img, mime: crop.mime, adj: crop.adj } : x
+        )
+      );
+    }
+    setCrop(null);
+  };
+
+  const saveReportImage = async () => {
+    const el = sheetRef.current;
+    if (!el) return;
+    try {
+      const width = Math.ceil(el.scrollWidth);
+      const height = Math.ceil(el.scrollHeight);
+      const clone = el.cloneNode(true);
+      clone.querySelectorAll(".gm-actions").forEach((node) => node.remove());
+      const markup = `
+        <div xmlns="http://www.w3.org/1999/xhtml" class="gm" style="padding:0;background:transparent;min-height:auto;width:${width}px;">
+          <style>${CSS}</style>
+          ${clone.outerHTML}
+        </div>
+      `;
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+          <foreignObject width="100%" height="100%">${markup}</foreignObject>
+        </svg>
+      `;
+      const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ratio = Math.min(2, window.devicePixelRatio || 1);
+        canvas.width = width * ratio;
+        canvas.height = height * ratio;
+        const ctx = canvas.getContext("2d");
+        ctx.scale(ratio, ratio);
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        const a = document.createElement("a");
+        a.download = `${no}.png`;
+        a.href = canvas.toDataURL("image/png");
+        a.click();
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        setErr("결과 이미지를 저장하지 못했습니다. 다시 시도해 주십시오.");
+      };
+      img.src = url;
+    } catch {
+      setErr("결과 이미지를 저장하지 못했습니다. 다시 시도해 주십시오.");
+    }
+  };
+
   const pick = async (i, f) => {
     if (!f) return;
     try {
       const img = await imageFileToInlineData(f);
-      setSubj((prev) =>
-        prev.map((x, j) =>
-          j === i
-            ? { ...x, img: img.data, mime: img.mime, adj: { ...DEF_ADJ } }
-            : x
-        )
+      openCrop(
+        { kind: "subject", index: i },
+        { img: img.data, mime: img.mime, adj: { ...DEF_ADJ }, title: solo ? "대상 이미지 조정" : `대상 ${i === 0 ? "A" : "B"} 이미지 조정` }
       );
     } catch {
       setErr("이미지를 읽지 못했습니다. 다른 파일로 다시 선택해 주십시오.");
@@ -686,7 +823,10 @@ export default function GonadalReport() {
     if (!f) return;
     try {
       const img = await imageFileToInlineData(f);
-      setPair({ img: img.data, mime: img.mime, adj: { ...DEF_ADJ } });
+      openCrop(
+        { kind: "pair" },
+        { img: img.data, mime: img.mime, adj: { ...DEF_ADJ }, title: "페어 이미지 조정" }
+      );
     } catch {
       setErr("이미지를 읽지 못했습니다. 다른 파일로 다시 선택해 주십시오.");
     }
@@ -894,7 +1034,13 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
   return (
     <div className="gm">
       <style>{CSS}</style>
-      <div className="gm-sheet">
+      <ImageCropModal
+        crop={crop}
+        onChange={setCrop}
+        onCancel={() => setCrop(null)}
+        onApply={applyCrop}
+      />
+      <div className="gm-sheet" ref={sheetRef}>
         {/* HEADER */}
         <div className="gm-hd">
           <div className="gm-brand">
@@ -998,6 +1144,12 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
                     adj={pair.adj || DEF_ADJ}
                     onChange={(v) => setPair((q) => ({ ...q, adj: v }))}
                     onPick={() => pairFile.current?.click()}
+                    onEdit={() =>
+                      openCrop(
+                        { kind: "pair" },
+                        { img: pair.img, mime: pair.mime, adj: pair.adj || DEF_ADJ, title: "페어 이미지 조정" }
+                      )
+                    }
                     height={190}
                     placeholder="두 사람이 함께 있는 이미지 1장"
                   />
@@ -1020,6 +1172,12 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
                         adj={s.adj || DEF_ADJ}
                         onChange={(v) => set(i, "adj", v)}
                         onPick={() => files[i].current?.click()}
+                        onEdit={() =>
+                          openCrop(
+                            { kind: "subject", index: i },
+                            { img: s.img, mime: s.mime, adj: s.adj || DEF_ADJ, title: solo ? "대상 이미지 조정" : `대상 ${i === 0 ? "A" : "B"} 이미지 조정` }
+                          )
+                        }
                         height={115}
                         placeholder="이미지 첨부"
                       />
@@ -1166,8 +1324,7 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
                         src={`data:${subj[0].mime};base64,${subj[0].img}`}
                         alt=""
                         style={{
-                          objectPosition: `${(subj[0].adj || DEF_ADJ).x}% ${(subj[0].adj || DEF_ADJ).y}%`,
-                          transform: `scale(${(subj[0].adj || DEF_ADJ).scale})`,
+                          transform: imageTransform(subj[0].adj || DEF_ADJ),
                         }}
                       />
                     </div>
@@ -1298,8 +1455,7 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
                       src={`data:${pair.mime};base64,${pair.img}`}
                       alt=""
                       style={{
-                        objectPosition: `${(pair.adj || DEF_ADJ).x}% ${(pair.adj || DEF_ADJ).y}%`,
-                        transform: `scale(${(pair.adj || DEF_ADJ).scale})`,
+                        transform: imageTransform(pair.adj || DEF_ADJ),
                       }}
                     />
                   </div>
@@ -1315,8 +1471,7 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
                           src={`data:${subj[i].mime};base64,${subj[i].img}`}
                           alt=""
                           style={{
-                            objectPosition: `${(subj[i].adj || DEF_ADJ).x}% ${(subj[i].adj || DEF_ADJ).y}%`,
-                            transform: `scale(${(subj[i].adj || DEF_ADJ).scale})`,
+                            transform: imageTransform(subj[i].adj || DEF_ADJ),
                           }}
                         />
                       </div>
@@ -1479,7 +1634,10 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
           본 결과는 감별 시점의 개체 상태에 한하며, 재검을 통해 등급이 변동될 수 있습니다.
           각인 부위 판정은 교차반응 수치와 문진 응답을 종합한 추정치입니다.
           {stage === "report" && (
-            <div>
+            <div className="gm-actions">
+              <button className="gm-again" onClick={saveReportImage}>
+                결과 이미지 저장
+              </button>
               <button className="gm-again" onClick={() => { setStage("input"); setData(null); }}>
                 재 검 접 수
               </button>
