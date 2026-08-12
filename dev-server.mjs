@@ -3,7 +3,6 @@ import { createRequire } from "node:module";
 import { createServer as createViteServer } from "vite";
 
 const require = createRequire(import.meta.url);
-const { handler: geminiHandler } = require("./netlify/functions/gemini.js");
 
 const port = Number(process.env.PORT || 8888);
 process.env.NETLIFY_LOCAL = "true";
@@ -40,6 +39,12 @@ function readBody(req) {
 
 loadDotEnv();
 
+function loadGeminiHandler() {
+  const functionPath = require.resolve("./netlify/functions/gemini.js");
+  delete require.cache[functionPath];
+  return require(functionPath).handler;
+}
+
 const vite = await createViteServer({
   server: { middlewareMode: true },
   appType: "spa",
@@ -48,6 +53,7 @@ const vite = await createViteServer({
 const server = http.createServer(async (req, res) => {
   if (req.url?.startsWith("/.netlify/functions/gemini")) {
     const body = await readBody(req);
+    const geminiHandler = loadGeminiHandler();
     const result = await geminiHandler({
       httpMethod: req.method,
       headers: req.headers,

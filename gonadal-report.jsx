@@ -161,6 +161,12 @@ const CSS = `
       grid-template-columns:78px 1fr;gap:16px;}
 .gm-ph b{font-size:9px;letter-spacing:.16em;color:var(--ink2);font-weight:400;padding-top:3px;}
 .gm-ph p{margin:0;font-size:13px;line-height:1.85;}
+.gm-protocol{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px;}
+.gm-protocol>div{border:1px solid var(--grid);padding:12px 13px;background:var(--form);}
+.gm-protocol span{display:block;font-size:8.5px;letter-spacing:.2em;color:var(--ink2);margin-bottom:6px;}
+.gm-protocol b{display:block;font-size:13px;margin-bottom:6px;}
+.gm-protocol p{margin:0;font-size:12.5px;line-height:1.75;color:var(--ink2);}
+@media(max-width:640px){.gm-protocol{grid-template-columns:1fr;}}
 .gm-examiner{background:var(--paper);padding:19px 21px;position:relative;}
 .gm-examiner p{margin:0;font-size:15px;line-height:2.05;letter-spacing:-.01em;}
 .gm-sign{display:flex;justify-content:flex-end;align-items:center;gap:13px;margin-top:16px;}
@@ -516,12 +522,125 @@ function describeApiError(status, error) {
   return message || error?.status || "사유 미상";
 }
 
+function isLocalPreview() {
+  return ["localhost", "127.0.0.1", "0.0.0.0"].includes(window.location.hostname);
+}
+
+function localMockReport(subjects, solo) {
+  const clean = (value, fallback) => (value || "").trim() || fallback;
+  const roleOf = (s, fallback) => (s.role && s.role !== "자동" ? s.role : fallback);
+  const gradeOf = (s, fallback) => (s.grade && s.grade !== "자동" ? s.grade : fallback);
+  const subject = (s, fallbackName, fallbackRole, fallbackGrade, code) => ({
+    name: clean(s.name, fallbackName),
+    role: roleOf(s, fallbackRole),
+    grade: gradeOf(s, fallbackGrade),
+    confidence: s.img ? 76 : 63,
+    pheromone: {
+      family: code === "A" ? "우디" : "허벌",
+      top: code === "A" ? "마른 편백 조각과 차가운 잉크" : "젖은 민트와 유리잔의 물기",
+      heart: code === "A" ? "백차를 머금은 셔츠 안쪽" : "빗물에 식은 라벤더",
+      base: code === "A" ? "밤새 식은 담요와 닫힌 서랍" : "희미한 머스크와 오래된 종이",
+      intensity: code === "A" ? 3 : 4,
+      persistence: "반나절",
+      diffusion: "한 팔 거리",
+      trigger: "상대가 시야에서 사라질 때 잔향이 먼저 짙어진다.",
+      scent_code: `GM-S-${code}7 «${code === "A" ? "편백과 잉크" : "민트와 종이"}»`,
+    },
+    evidence: [clean(s.line, "기재된 한 줄 설명"), s.img ? "첨부 이미지의 시선과 자세" : "문진 응답의 억제 패턴"],
+    remarks: "평시에는 억제 상태가 안정적이나 결핍 자극 앞에서 호흡 간격이 짧아진다.",
+  });
+
+  if (solo) {
+    const one = subject(subjects[0], "대상", "오메가", "우성", "A");
+    return {
+      subject: one,
+      codename: "폐쇄형 잔향 보유체",
+      rarity: { total: 100, count: 12 },
+      counterfactual: "알파 판정이었다면 발신 강도보다 통제 구역 확보가 먼저 관찰되었을 가능성이 높다.",
+      warning: "장시간 방치 시 억제 피로가 누적될 수 있다.",
+      oneline: "가까이 오면 멀어지고, 멀어지면 먼저 향이 돌아오는 개체.",
+      traits: {
+        metrics: [
+          { label: "신호 발신 강도", level: 3 },
+          { label: "감응 역치", level: 4 },
+          { label: "자기 억제력", level: 4 },
+          { label: "유대 형성 경향", level: 3 },
+          { label: "각인 수용성", level: 2 },
+        ],
+        note: "반응은 늦게 올라오지만 한 번 고정되면 쉽게 빠지지 않는다.",
+      },
+      imprint_history: { status: "흔적 있음", note: "현재 유지 중인 약한 잔류 반응이 관찰된다." },
+      cycle_profile: {
+        heat_cycle: "약 6~8주 간격으로 올라오며, 가까워질수록 목덜미 체온과 옷깃 안쪽의 단향이 먼저 짙어진다.",
+        rut_cycle: "약 5~7주 간격으로 발신성이 치솟고, 전조기에는 목소리가 낮아지며 특정 향을 끝까지 따라가려는 성향이 강해진다.",
+        precursor: "발현 전에는 손끝이 차가워지고 숨을 참는 시간이 길어지며, 익숙한 향이 닿는 순간 시선이 먼저 흐트러진다.",
+        suppression_failure: "밀폐된 공간에서 특정 대상의 잔향이 겹치면 목덜미를 가리고도 몸이 먼저 반응해, 피하려는 동작이 오히려 더 노골적인 신호가 된다.",
+        heat_management: [
+          { label: "억제제 반응", note: "정량을 먹고도 목덜미의 단향은 얇게 새며, 약효가 돌수록 오히려 숨을 참는 버릇이 노골적으로 드러난다." },
+          { label: "파트너 유무", note: "고정 파트너를 두지 않으려 하지만 특정 향이 가까워지면 둥지 가장자리까지 밀려나와, 거절과 대기를 같은 얼굴로 한다." },
+          { label: "혼자 버티는 법", note: "혼자 견딜 때는 천을 겹겹이 끌어안고 문 쪽을 등진다. 손끝이 떨릴수록 상대의 물건을 더 깊숙이 숨긴다." },
+        ],
+        rut_management: [
+          { label: "억제제 반응", note: "억제제를 먹어도 발신향의 밑맛은 남아, 말수가 줄어들수록 낮은 목소리와 손등의 힘줄이 먼저 들킨다." },
+          { label: "파트너 유무", note: "임시 파트너보다 특정 상대 하나에 안정성이 몰린다. 그 향이 멀어지면 동선을 장악하려는 충동이 선명해진다." },
+          { label: "혼자 버티는 법", note: "혼자 버틸 때는 출입구에서 먼 곳에 앉아 손을 묶듯 감추고, 이름을 부르지 않으려고 이를 악문다." },
+        ],
+        nesting: "둥지는 넓은 방보다 좁고 천이 겹친 곳에서 안정되며, 상대의 향이 밴 물건이 하나만 섞여도 방어선이 빠르게 느슨해진다.",
+        isolation_warning: "완전 격리는 불안을 키우지만, 너무 가까운 거리는 발현을 노골적으로 앞당긴다.",
+      },
+      prognosis: {
+        phase_1: "평시에는 무표정한 안정 상태를 유지한다.",
+        phase_2: "과부하 시 말수가 줄고 향의 끝맛이 먼저 거칠어진다.",
+        phase_3: "안정 구역과 주기 기록이 확보되면 장기 예후는 양호하다.",
+      },
+      examiner_note: "로컬 미리보기용 임시 판정입니다.",
+    };
+  }
+
+  const a = subject(subjects[0], "개체 A", "알파", "우성", "A");
+  const b = subject(subjects[1], "개체 B", "오메가", "우성", "B");
+  return {
+    subjects: [a, b],
+    codename: "지연 점화형 페어",
+    rarity: { total: 100, count: 9 },
+    counterfactual: "한쪽이 먼저 물러나면 안정되지만, 동시에 물러나면 반응이 더 오래 남는다.",
+    warning: "초기 접촉보다 접촉 후 분리 구간에서 변수가 크다.",
+    oneline: "붙어 있을 때보다 떨어진 뒤에 더 선명해지는 페어.",
+    cross_reaction: {
+      type_name: "잔향 추적형 교차반응",
+      compatibility: 78,
+      scent_sync: 71,
+      scent_note: "편백 계열의 건조한 발신과 허벌 계열의 습한 잔향이 뒤늦게 맞물린다.",
+      metrics: [
+        { label: "유대 형성 속도", level: 3 },
+        { label: "신호 간섭도", level: 4 },
+        { label: "상호 억제 가능성", level: 3 },
+        { label: "분리 내성", level: 2 },
+        { label: "장기 안정성", level: 4 },
+      ],
+      caution: "분리 직후의 재접촉은 각인 반응을 과장할 수 있다.",
+    },
+    imprint: {
+      from: a.name,
+      to: b.name,
+      site_code: "N-03 목덜미 후면",
+      fixation: "불완전 고정",
+      stability: 64,
+      rationale: "시선 회피 이후에도 향 추적 반응이 남는다.",
+      note: "확정 각인 전 단계로 재검 시 변동 가능성이 있다.",
+    },
+    prognosis: {
+      phase_1: "초기에는 서로의 억제 양식이 충돌한다.",
+      phase_2: "중기에는 분리 구간에서 잔향 의존이 커진다.",
+      phase_3: "장기적으로는 규칙을 정한 재접촉이 안정성을 높인다.",
+    },
+    examiner_note: "로컬 미리보기용 임시 판정입니다.",
+  };
+}
+
 function imageTransform(adj = DEF_ADJ) {
   return `scale(${adj.scale}) translate(${50 - adj.x}%, ${50 - adj.y}%)`;
 }
-
-// 출입 코드 — 지인에게 알려줄 값을 여기 적으세요
-const PASSCODE = "che-i";
 
 const DEF_ADJ = { scale: 1, x: 50, y: 50 };
 
@@ -709,9 +828,6 @@ export default function GonadalReport() {
     { name: "", line: "", img: null, mime: "", role: "자동", grade: "자동", adj: { ...DEF_ADJ } },
   ]);
   const [ans, setAns] = useState({});
-  const [entered, setEntered] = useState(false);
-  const [code, setCode] = useState("");
-  const [codeErr, setCodeErr] = useState("");
   const [mode, setMode] = useState("페어 감별");
   const [imgMode, setImgMode] = useState("개별");
   const [pair, setPair] = useState({ img: null, mime: "", adj: { ...DEF_ADJ } });
@@ -726,6 +842,8 @@ export default function GonadalReport() {
   const files = [useRef(null), useRef(null)];
   const pairFile = useRef(null);
   const solo = mode === "개인 감별";
+  const reportRole = data?.subject?.role || subj[0]?.role;
+  const reportIsAlpha = reportRole === "알파";
 
   const set = (i, k, v) =>
     setSubj((s) => s.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
@@ -931,6 +1049,17 @@ ${solo ? `
 [검사 구분] 단일 개체 검사다. 대상 B는 존재하지 않는다. 교차반응·적합률·향 동조율·각인 부위 판정을 하지 마라. 각인은 문진에 답한 기왕력만 imprint_history에 기록한다.
 traits.metrics는 다음 다섯 항목을 이 순서로 채운다: 신호 발신 강도 / 감응 역치 / 자기 억제력 / 유대 형성 경향 / 각인 수용성. level은 1~5.
 codename은 관계가 아니라 이 개체 자신의 분류 명칭으로, counterfactual은 이 개체가 다른 판정을 받았을 경우의 가정으로 쓴다.\nprognosis는 관계 경과가 아니라 이 개체 자신의 경과다. phase_1은 평시 상태, phase_2는 과부하 상황, phase_3은 장기 전망으로 쓴다.
+cycle_profile은 단일 개체 결과지의 핵심이다. 역할에 따라 독자가 "이 캐릭터가 왜 위험하고 매혹적인지" 바로 상상할 수 있게 적는다. 문체는 임상 보고서지만 내용은 관능적 긴장, 페로몬, 참는 숨, 시선 회피, 접촉 직전의 거리감이 살아야 한다. 직접적인 성행위 묘사는 하지 말고, 속된말로 꼴리는 반응성을 페로몬/체온/목소리/손끝/둥지/동선의 변화로 암시한다.
+- 대상 role이 "오메가"면 결과 화면에는 heat_cycle, precursor, suppression_failure, heat_management, nesting, isolation_warning만 주로 노출된다. heat_cycle은 "히트 주기", suppression_failure는 "히트 반응"으로 보인다.
+- 대상 role이 "알파"면 결과 화면에는 rut_cycle, precursor, suppression_failure, rut_management, isolation_warning만 주로 노출된다. rut_cycle은 "러트 주기", suppression_failure는 "러트 반응"으로 보인다.
+- heat_cycle: 오메가의 히트 주기. 날짜 간격뿐 아니라 주기가 가까워질수록 향·체온·감각이 어떻게 달라지는지 한 문장으로 적는다.
+- rut_cycle: 알파의 러트 주기. 날짜 간격뿐 아니라 주기가 가까워질수록 발신향·목소리·집착성이 어떻게 달라지는지 한 문장으로 적는다.
+- precursor: 발현 24~72시간 전 전조. 목덜미, 손끝, 숨, 옷깃, 특정 향에 대한 반응 같은 감각적 단서를 한 문장으로 적는다.
+- suppression_failure: 역할에 맞춰 히트 반응 또는 러트 반응으로 읽히는 핵심 문장. 억제가 무너지는 조건과 그 순간의 반응을 관능적으로 적는다.
+- heat_management: 화면에서는 "히트 반응" 카드 3개로 보인다. 반드시 1) 억제제를 먹고 버티는지/안 먹는지/먹어도 새는 반응, 2) 파트너를 두는지/안 두는지/누가 가까이 있으면 무너지는지, 3) 혼자 견디는지/못 견디는지/혼자 버틴다면 둥지에서 어떻게 버티는지를 각각 포함한다. label은 "억제제 반응", "파트너 유무", "혼자 버티는 법"처럼 선명하게 쓴다. 단순 처방법이 아니라 히트 때 드러나는 반응을 쓴다. 오메가면 둥지에 숨어드는 행동, 체온 상승, 향 차단 실패, 접촉 욕구를 참는 몸짓을 포함한다.
+- rut_management: 화면에서는 "러트 반응" 카드 3개로 보인다. 반드시 1) 억제제를 먹고 버티는지/안 먹는지/먹어도 새는 발신향, 2) 파트너를 두는지/안 두는지/특정 상대가 있어야 안정되는지, 3) 혼자 견디는지/못 견디는지/혼자 버틴다면 동선·손·목소리를 어떻게 통제하는지를 각각 포함한다. label은 "억제제 반응", "파트너 유무", "혼자 버티는 법"처럼 선명하게 쓴다. 단순 처방법이 아니라 러트 때 드러나는 반응을 쓴다. 알파면 동선 장악, 낮아지는 목소리, 향 발신 증가, 특정 상대를 놓치지 않으려는 충동을 포함한다.
+- nesting: 오메가 둥지 관련 소견. 무엇을 끌어모으고 어떤 냄새/재질/공간에서 무너지는지 관능적으로 적는다. 알파라면 비워도 된다.
+- isolation_warning: 혼자 두면 악화되는지, 가까이 있으면 더 위험한지에 대한 경고문 한 문장.
 ` : ""}
 [최종 감사 규칙]
 - 출력 직전에 JSON을 한 번 파싱 가능한 형태로 검사한다. 쉼표 누락, 따옴표 누락, 주석, 코드펜스, 앞뒤 설명은 모두 실패다.
@@ -941,7 +1070,7 @@ codename은 관계가 아니라 이 개체 자신의 분류 명칭으로, counte
 - 모든 level은 1~5, 모든 percent 계열 숫자는 0~100 정수로 쓴다.
 
 [출력] 어떤 경우에도 아래 JSON만 출력한다. 코드펜스·설명·서두·반려 사유를 붙이지 마라.
-${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":{"family":"","top":"","heart":"","base":"","intensity":0,"persistence":"","diffusion":"","trigger":"","scent_code":""},"evidence":["",""],"remarks":""},"codename":"","rarity":{"total":0,"count":0},"counterfactual":"","warning":"","oneline":"","traits":{"metrics":[{"label":"신호 발신 강도","level":0},{"label":"감응 역치","level":0},{"label":"자기 억제력","level":0},{"label":"유대 형성 경향","level":0},{"label":"각인 수용성","level":0}],"note":""},"imprint_history":{"status":"","note":""},"prognosis":{"phase_1":"","phase_2":"","phase_3":""},"examiner_note":""}` : `{"subjects":[{"name":"","role":"","grade":"","confidence":0,"pheromone":{"family":"","top":"","heart":"","base":"","intensity":0,"persistence":"","diffusion":"","trigger":"","scent_code":""},"evidence":["",""],"remarks":""}],"codename":"","rarity":{"total":0,"count":0},"counterfactual":"","warning":"","oneline":"","cross_reaction":{"type_name":"","compatibility":0,"scent_sync":0,"scent_note":"","metrics":[{"label":"유대 형성 속도","level":0},{"label":"신호 간섭도","level":0},{"label":"상호 억제 가능성","level":0},{"label":"분리 내성","level":0},{"label":"장기 안정성","level":0}],"caution":""},"imprint":{"from":"","to":"","site_code":"","fixation":"","stability":0,"rationale":"","note":""},"prognosis":{"phase_1":"","phase_2":"","phase_3":""},"examiner_note":""}`}`;
+${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":{"family":"","top":"","heart":"","base":"","intensity":0,"persistence":"","diffusion":"","trigger":"","scent_code":""},"evidence":["",""],"remarks":""},"codename":"","rarity":{"total":0,"count":0},"counterfactual":"","warning":"","oneline":"","traits":{"metrics":[{"label":"신호 발신 강도","level":0},{"label":"감응 역치","level":0},{"label":"자기 억제력","level":0},{"label":"유대 형성 경향","level":0},{"label":"각인 수용성","level":0}],"note":""},"imprint_history":{"status":"","note":""},"cycle_profile":{"heat_cycle":"","rut_cycle":"","precursor":"","suppression_failure":"","heat_management":[{"label":"","note":""},{"label":"","note":""},{"label":"","note":""}],"rut_management":[{"label":"","note":""},{"label":"","note":""},{"label":"","note":""}],"nesting":"","isolation_warning":""},"prognosis":{"phase_1":"","phase_2":"","phase_3":""},"examiner_note":""}` : `{"subjects":[{"name":"","role":"","grade":"","confidence":0,"pheromone":{"family":"","top":"","heart":"","base":"","intensity":0,"persistence":"","diffusion":"","trigger":"","scent_code":""},"evidence":["",""],"remarks":""}],"codename":"","rarity":{"total":0,"count":0},"counterfactual":"","warning":"","oneline":"","cross_reaction":{"type_name":"","compatibility":0,"scent_sync":0,"scent_note":"","metrics":[{"label":"유대 형성 속도","level":0},{"label":"신호 간섭도","level":0},{"label":"상호 억제 가능성","level":0},{"label":"분리 내성","level":0},{"label":"장기 안정성","level":0}],"caution":""},"imprint":{"from":"","to":"","site_code":"","fixation":"","stability":0,"rationale":"","note":""},"prognosis":{"phase_1":"","phase_2":"","phase_3":""},"examiner_note":""}`}`;
 
     const parts = [{ text: prompt }];
     if (imgMode === "개별") {
@@ -987,7 +1116,13 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
       }
 
       if (!res.ok || j.error) {
-        return fail(`요청이 거부되었습니다 (HTTP ${res.status}) — ${describeApiError(res.status, j?.error)}`);
+        const apiMessage = describeApiError(res.status, j?.error);
+        if (isLocalPreview() && res.status === 500 && /GEMINI_API_KEY/.test(j?.error?.message || apiMessage)) {
+          setData(localMockReport(subj.slice(0, solo ? 1 : 2), solo));
+          setStage("report");
+          return;
+        }
+        return fail(`요청이 거부되었습니다 (HTTP ${res.status}) — ${apiMessage}`);
       }
 
       const raw = (j.candidates || [])
@@ -1067,44 +1202,8 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
           </div>
         </div>
 
-        {/* GATE */}
-        {!entered && (
-          <div className="gm-sec gm-gate">
-            <div className="gm-num"><b>출입 인증</b><em>RESTRICTED</em></div>
-            <p className="gm-gate-msg">
-              본 검사소는 등록된 관계자만 이용할 수 있습니다.<br />
-              발급받은 출입 코드를 입력하십시오.
-            </p>
-            <div className="gm-gate-row">
-              <input
-                className="gm-in"
-                type="password"
-                value={code}
-                onChange={(e) => { setCode(e.target.value); setCodeErr(""); }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    if (code.trim() === PASSCODE) setEntered(true);
-                    else setCodeErr("출입 코드가 일치하지 않습니다.");
-                  }
-                }}
-                placeholder="출입 코드"
-              />
-              <button
-                className="gm-gate-btn"
-                onClick={() => {
-                  if (code.trim() === PASSCODE) setEntered(true);
-                  else setCodeErr("출입 코드가 일치하지 않습니다.");
-                }}
-              >
-                입 장
-              </button>
-            </div>
-            {codeErr && <p className="gm-err" style={{ marginTop: 12 }}>{codeErr}</p>}
-          </div>
-        )}
-
         {/* INPUT */}
-        {entered && stage === "input" && (
+        {stage === "input" && (
           <>
             <div className="gm-sec">
               <div className="gm-num"><b>Ⅰ. 검체 등록</b><em>SUBJECT REGISTRATION</em></div>
@@ -1412,7 +1511,38 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
             </div>
 
             <div className="gm-sec">
-              <div className="gm-num"><b>Ⅳ. 경과 예측</b><em>PROGNOSIS</em></div>
+              <div className="gm-num"><b>Ⅳ. 발현 주기 및 대응</b><em>CYCLE CARE</em></div>
+              <div className="gm-ph">
+                <b>{reportIsAlpha ? "러트 주기" : "히트 주기"}</b>
+                <p>{reportIsAlpha ? data.cycle_profile?.rut_cycle : data.cycle_profile?.heat_cycle}</p>
+              </div>
+              <div className="gm-ph">
+                <b>전조</b>
+                <p>{data.cycle_profile?.precursor}</p>
+              </div>
+              <div className="gm-ph">
+                <b>{reportIsAlpha ? "러트 반응" : "히트 반응"}</b>
+                <p>{data.cycle_profile?.suppression_failure}</p>
+              </div>
+              <div className="gm-protocol">
+                {(reportIsAlpha ? data.cycle_profile?.rut_management : data.cycle_profile?.heat_management)?.map((m, i) => (
+                  <div key={`${reportIsAlpha ? "rut" : "heat"}-${i}`}>
+                    <span>{reportIsAlpha ? "RUT RESPONSE" : "HEAT RESPONSE"}</span>
+                    <b>{m.label}</b>
+                    <p>{m.note}</p>
+                  </div>
+                ))}
+              </div>
+              {!reportIsAlpha && data.cycle_profile?.nesting && (
+                <p className="gm-scentnote gm-serif">{data.cycle_profile.nesting}</p>
+              )}
+              {data.cycle_profile?.isolation_warning && (
+                <p className="gm-caution">{data.cycle_profile.isolation_warning}</p>
+              )}
+            </div>
+
+            <div className="gm-sec">
+              <div className="gm-num"><b>Ⅴ. 경과 예측</b><em>PROGNOSIS</em></div>
               <div className="gm-ph"><b>평시</b><p>{data.prognosis?.phase_1}</p></div>
               <div className="gm-ph"><b>과부하 시</b><p>{data.prognosis?.phase_2}</p></div>
               <div className="gm-ph"><b>장기 전망</b><p>{data.prognosis?.phase_3}</p></div>
@@ -1422,7 +1552,7 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
             </div>
 
             <div className="gm-sec">
-              <div className="gm-num"><b>Ⅴ. 담당 감별사 소견</b><em>EXAMINER'S NOTE</em></div>
+              <div className="gm-num"><b>Ⅵ. 담당 감별사 소견</b><em>EXAMINER'S NOTE</em></div>
               <div className="gm-examiner">
                 <p className="gm-serif">{data.examiner_note}</p>
                 <div className="gm-sign">
@@ -1630,7 +1760,6 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
 
         <div className="gm-cut" />
         <div className="gm-ft">
-          {!entered && "출입 코드는 검사소 관계자에게 문의하십시오. "}
           본 결과는 감별 시점의 개체 상태에 한하며, 재검을 통해 등급이 변동될 수 있습니다.
           각인 부위 판정은 교차반응 수치와 문진 응답을 종합한 추정치입니다.
           {stage === "report" && (
