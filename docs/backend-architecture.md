@@ -8,6 +8,7 @@ Alphaomega를 결제/이용권 기반 서비스로 전환할 때의 백엔드 �
 - 개인 Gemini API key가 있으면 결제/이용권 UI를 숨긴다.
 - 개인 Gemini API key가 없으면 결제/이용권 UI를 표시한다.
 - 검사 제출 시 프론트는 항상 백엔드 `/api/gemini`로 요청한다.
+- 세부 역할 경계는 `docs/frontend-backend-boundary.md`를 따른다.
 
 ## Gemini Proxy Policy
 

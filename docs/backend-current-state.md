@@ -9,6 +9,7 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
 - 결제 제공자는 특정 서비스명으로 고정하지 않는다.
 - Apple/Google 같은 인앱 결제 제공자는 `purchase_orders.provider` 값으로만 구분한다.
 - 이용권은 결제 성공 후 발급되고, 검사 최종 결과가 완성된 뒤에만 차감한다.
+- 프론트/백엔드 역할 분리는 `docs/frontend-backend-boundary.md`를 기준으로 한다.
 
 ## Runtime Layout
 
