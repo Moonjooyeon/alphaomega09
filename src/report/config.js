@@ -11,7 +11,9 @@ export const SITES = {
   HL: { name: "뒷목 머리카락 선", meaning: "목덜미보다 반 뼘 위. 완전히는 못 맡긴 자리." },
 };
 
-export const GEMINI_PROXY_ENDPOINT = import.meta.env.VITE_GEMINI_ENDPOINT || "/api/gemini";
+export const API_BASE_ENDPOINT = import.meta.env.VITE_API_BASE_ENDPOINT || "/api";
+export const GEMINI_PROXY_ENDPOINT = import.meta.env.VITE_GEMINI_ENDPOINT || `${API_BASE_ENDPOINT}/gemini`;
+export const TOSS_LOGIN_MOCK = import.meta.env.VITE_TOSS_LOGIN_MOCK === "true";
 export const IMG_MODES = ["개별", "페어 1장", "없음"];
 export const MODES = ["페어 감별", "개인 감별"];
 

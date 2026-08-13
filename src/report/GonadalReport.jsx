@@ -1,7 +1,9 @@
-import React, { useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { appLogin } from "@apps-in-toss/web-framework";
 import { ASSETS } from "./assets.js";
 import { CSS } from "./styles.js";
 import {
+  API_BASE_ENDPOINT,
   GEMINI_PROXY_ENDPOINT,
   GRADE_OPTS,
   GRADES,
@@ -13,6 +15,7 @@ import {
   ROLE_OPTS,
   SITES,
   SOLO_QUESTIONS,
+  TOSS_LOGIN_MOCK,
 } from "./config.js";
 import {
   DEF_ADJ,
@@ -29,6 +32,45 @@ import { localMockReport } from "./mockReport.js";
 /* ─────────────────────────────────────────────
    성선의학연구소 — 개체 감별 및 교차반응 검사
    ───────────────────────────────────────────── */
+
+const AUTH_TOKEN_STORAGE = "ao_auth_token";
+
+function readStoredToken() {
+  try {
+    return localStorage.getItem(AUTH_TOKEN_STORAGE) || "";
+  } catch {
+    return "";
+  }
+}
+
+function saveStoredToken(token) {
+  try {
+    if (token) localStorage.setItem(AUTH_TOKEN_STORAGE, token);
+    else localStorage.removeItem(AUTH_TOKEN_STORAGE);
+  } catch {}
+}
+
+async function apiFetch(path, { token = "", ...options } = {}) {
+  const res = await fetch(`${API_BASE_ENDPOINT}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
+  });
+  const text = await res.text();
+  let body = {};
+  try {
+    body = text ? JSON.parse(text) : {};
+  } catch {
+    body = { error: { message: text || `HTTP ${res.status}` } };
+  }
+  if (!res.ok) {
+    throw new Error(body?.error?.message || body?.detail || `HTTP ${res.status}`);
+  }
+  return body;
+}
 
 function Adjustable({ src, adj, onChange, onPick, onEdit, height, placeholder, wide }) {
   return (
@@ -222,6 +264,9 @@ export default function GonadalReport() {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
   const [reject, setReject] = useState("");
+  const [authToken, setAuthToken] = useState(readStoredToken);
+  const [authUser, setAuthUser] = useState(null);
+  const [authBusy, setAuthBusy] = useState(false);
   const [crop, setCrop] = useState(null);
   const [no] = useState(caseNo);
   const sheetRef = useRef(null);
@@ -230,6 +275,59 @@ export default function GonadalReport() {
   const solo = mode === "개인 감별";
   const reportRole = data?.subject?.role || subj[0]?.role;
   const reportIsAlpha = reportRole === "알파";
+  const isAuthenticated = Boolean(authToken && authUser);
+
+  useEffect(() => {
+    if (!authToken) {
+      setAuthUser(null);
+      return;
+    }
+    let ignore = false;
+    apiFetch("/me", { token: authToken })
+      .then((body) => {
+        if (!ignore) setAuthUser(body.user || null);
+      })
+      .catch(() => {
+        if (ignore) return;
+        setAuthToken("");
+        saveStoredToken("");
+        setAuthUser(null);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [authToken]);
+
+  async function submitTossLogin() {
+    setErr("");
+    setAuthBusy(true);
+    try {
+      const loginPayload = TOSS_LOGIN_MOCK
+        ? { authorizationCode: "mock", referrer: "LOCAL", mockUserKey: "local-dev-user" }
+        : await appLogin();
+      const body = await apiFetch("/toss/login", {
+        method: "POST",
+        body: JSON.stringify({
+          authorizationCode: loginPayload.authorizationCode,
+          referrer: loginPayload.referrer,
+          mockUserKey: loginPayload.mockUserKey,
+        }),
+      });
+      setAuthToken(body.token);
+      saveStoredToken(body.token);
+      setAuthUser(body.user || null);
+    } catch (error) {
+      setErr(`토스 로그인에 실패했습니다 — ${error?.message || "토스 앱 안에서 다시 시도해 주십시오."}`);
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  function logout() {
+    setAuthToken("");
+    saveStoredToken("");
+    setAuthUser(null);
+  }
 
   const set = (i, k, v) =>
     setSubj((s) => s.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
@@ -347,6 +445,10 @@ export default function GonadalReport() {
   async function run() {
     if (missing.length) {
       setErr(`미기재 항목이 있습니다 — ${missing.join(" · ")}`);
+      return;
+    }
+    if (!isAuthenticated) {
+      setErr("토스 로그인 후 검사를 접수할 수 있습니다.");
       return;
     }
     setStage("running");
@@ -496,7 +598,10 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
     try {
       const res = await fetch(GEMINI_PROXY_ENDPOINT, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
         body: JSON.stringify({
           reportMode: solo ? "solo" : "pair",
           phase: "generate",
@@ -776,6 +881,31 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
                   ))}
                 </div>
               </div>}
+            </div>
+
+            <div className="gm-sec gm-auth">
+              <div>
+                <div className="gm-num"><b>Ⅲ. 토스 로그인</b><em>AUTHENTICATION</em></div>
+                <p className="gm-auth-msg">
+                  {isAuthenticated
+                    ? `${authUser.displayName || "토스 사용자"} 계정으로 접수 기록이 저장됩니다.`
+                    : "검사 접수 전 토스 로그인이 필요합니다."}
+                </p>
+              </div>
+              <div className="gm-auth-actions">
+                {isAuthenticated ? (
+                  <>
+                    <span className="gm-auth-pill">로그인 완료</span>
+                    <button className="gm-gate-btn" type="button" onClick={logout}>
+                      로그아웃
+                    </button>
+                  </>
+                ) : (
+                  <button className="gm-gate-btn" type="button" disabled={authBusy} onClick={submitTossLogin}>
+                    {authBusy ? "로그인 중" : "토스 로그인"}
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="gm-sec">

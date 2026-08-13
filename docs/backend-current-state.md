@@ -10,6 +10,7 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
 - Apple/Google 같은 인앱 결제 제공자는 `purchase_orders.provider` 값으로만 구분한다.
 - 이용권은 결제 성공 후 발급되고, 검사 최종 결과가 완성된 뒤에만 차감한다.
 - 프론트/백엔드 역할 분리는 `docs/frontend-backend-boundary.md`를 기준으로 한다.
+- 토스 로그인은 먼저 연결했다. 프론트는 `appLogin()`으로 인가 코드만 받고, 백엔드는 mTLS로 토큰 교환과 사용자 조회를 처리한다.
 
 ## Runtime Layout
 
@@ -17,6 +18,37 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
 - `db`: PostgreSQL
 - `Dockerfile`: 프론트 빌드 후 `server/index.js` 실행
 - `docker-compose.yml`: app/db 구성, `/api/*`와 정적 파일을 같은 서버에서 처리
+
+## Progress Snapshot
+
+완료:
+
+- Docker Compose 기반 Express/PostgreSQL 백엔드 골격
+- Gemini 서버 프록시
+- 공용 Gemini key 비용 한도/요청 로그
+- 토스 로그인 프론트 버튼
+- Apps in Toss `appLogin()` 인가 코드 수신
+- 서버 mTLS 기반 Toss 토큰 교환/사용자 조회 라우트
+- `app_users` 사용자 upsert
+- 서비스 세션 토큰 발급 및 `/api/me`
+- 로그인된 검사 요청의 `user_id` 로그 연결
+- 프론트/백엔드 역할 경계 문서화
+
+미완료:
+
+- 실제 토스 앱/샌드박스에서 로그인 왕복 검증
+- 인앱 결제 상품 조회/구매
+- 결제 영수증 또는 order 검증
+- 결제 성공 후 `access_passes` 발급
+- 잔여 이용권 조회 UI
+- 최종 결과 확정 후 이용권 차감 API
+- 운영 서버 nginx/domain/compose 파일 확정
+
+마지막 로컬 검증:
+
+- `npm run build` 성공
+- 서버 JS 문법 체크 성공
+- `docker compose config` 성공
 
 ## API Draft
 
@@ -30,6 +62,13 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
   - `userApiKey`가 없으면 공용 `GEMINI_API_KEY` 사용
   - 현재는 비용 한도 확인과 요청 로그 저장까지 구현
   - 이용권 차감은 아직 직접 수행하지 않음
+- `POST /api/toss/login`
+  - Apps in Toss `appLogin()`에서 받은 `authorizationCode`, `referrer`를 서버로 전달
+  - 서버가 Toss 토큰 교환/사용자 조회를 수행
+  - `app_users`에 `toss:<userKey>`로 사용자 upsert
+  - 서비스 세션 토큰 반환
+- `GET /api/me`
+  - 저장된 서비스 세션 토큰으로 현재 사용자 확인
 
 ## Database Tables
 
@@ -91,6 +130,7 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
 ## Environment Variables
 
 - `POSTGRES_PASSWORD`
+- `SESSION_SECRET`
 - `GEMINI_API_KEY`
 - `GEMINI_API_BASE`
 - `GEMINI_MODEL`
@@ -103,6 +143,14 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
 - `PASS_USES_PER_PURCHASE`
 - `MAX_REQUEST_BYTES`
 - `HTTP_PORT`
+- `TOSS_API_BASE`
+- `TOSS_MTLS_CERT_PATH`
+- `TOSS_MTLS_KEY_PATH`
+- `TOSS_MTLS_KEY_PASSWORD`
+- `TOSS_LOGIN_MOCK`
+- `VITE_API_BASE_ENDPOINT`
+- `VITE_GEMINI_ENDPOINT`
+- `VITE_TOSS_LOGIN_MOCK`
 
 ## Lessons Baked Into The Design
 
@@ -133,8 +181,11 @@ curl http://127.0.0.1:8080/api/health
 
 ## Next Work
 
-- 로그인/세션 인증 연결
-- 인앱 결제 영수증 검증 API 연결
+- 토스 앱/샌드박스에서 `POST /api/toss/login` 실제 왕복 검증
+- 로그인 성공 후 `app_users.last_login_at` 갱신 확인
+- `/api/gemini` 요청이 `usage_sessions.user_id`, `gemini_requests.user_id`에 연결되는지 DB 확인
+- 인앱 결제 상품 조회/구매 연결
+- 인앱 결제 영수증 또는 order 검증 API 연결
 - 결제 성공 시 `access_passes` 발급
 - 최종 결과 확정 후 `/passes/consume` 성격의 차감 API 추가
 - 프론트 구매/잔여 횟수 UI 연결

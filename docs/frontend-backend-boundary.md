@@ -83,6 +83,17 @@ Alphaomega를 인앱 결제/이용권 기반 서비스로 옮길 때 프론트�
 - 결제 영수증 검증 결과와 로그인된 `user_id`를 백엔드에서 연결한다.
 - 로그인 없이 개인 Gemini key만 쓰는 경우에는 결제/이용권 차감 대상이 아니므로 익명 세션으로 처리할 수 있다.
 
+현재 토스 로그인 구현:
+
+- 프론트는 Apps in Toss `appLogin()`으로 `authorizationCode`, `referrer`만 받는다.
+- 프론트는 받은 값을 즉시 `POST /api/toss/login`으로 전달한다.
+- 백엔드는 mTLS 인증서로 Toss token API와 `login-me` API를 호출한다.
+- 백엔드는 Toss `userKey`를 `app_users.login_id = toss:<userKey>` 형태로 저장한다.
+- 프론트는 백엔드가 발급한 서비스 세션 토큰만 저장한다.
+- Toss AccessToken/RefreshToken은 프론트로 내려주지 않는다.
+- `/api/me`로 저장된 세션 토큰을 복구한다.
+- 로그인된 `/api/gemini` 요청은 `Authorization: Bearer <token>`을 포함한다.
+
 ### `POST /api/gemini`
 
 프론트가 검사 생성을 요청한다.
@@ -105,6 +116,7 @@ Alphaomega를 인앱 결제/이용권 기반 서비스로 옮길 때 프론트�
 
 - 이 API는 이용권을 차감하지 않는다.
 - 이 API 성공은 “Gemini 응답 수신 성공”이지 “사용자에게 결과 제공 성공”이 아니다.
+- 로그인 토큰이 있으면 백엔드는 검사 세션과 Gemini 요청 로그에 `user_id`를 연결한다.
 
 ### `GET /api/passes`
 

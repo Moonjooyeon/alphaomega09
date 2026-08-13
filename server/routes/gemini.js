@@ -1,35 +1,37 @@
 const express = require("express");
 const config = require("../config");
 const { query } = require("../db");
+const { optionalUser } = require("../services/auth");
 const { callGemini } = require("../services/gemini");
 const { estimateCost, getTokenUsage, readSharedUsage } = require("../services/usage");
 const { hashText, id, jsonError } = require("../utils");
 
 const router = express.Router();
 
-async function createSession({ keyMode, reportMode }) {
+async function createSession({ userId, keyMode, reportMode }) {
   const sessionId = id("session");
   await query(
-    "INSERT INTO usage_sessions (id, key_mode, report_mode, status) VALUES ($1, $2, $3, 'started')",
-    [sessionId, keyMode, reportMode || "unknown"]
+    "INSERT INTO usage_sessions (id, user_id, key_mode, report_mode, status) VALUES ($1, $2, $3, $4, 'started')",
+    [sessionId, userId || null, keyMode, reportMode || "unknown"]
   );
   return sessionId;
 }
 
-async function recordGeminiRequest({ req, sessionId, keyMode, response, body, tokens, cost }) {
+async function recordGeminiRequest({ req, userId, sessionId, keyMode, response, body, tokens, cost }) {
   const error = body?.error || {};
   await query(
     `
       INSERT INTO gemini_requests (
-        id, session_id, key_mode, requested_model, actual_model, phase, ok, status,
+        id, session_id, user_id, key_mode, requested_model, actual_model, phase, ok, status,
         input_tokens, output_tokens, cost_usd, cost_krw, error_code, error_message,
         ip_hash, user_agent_hash, completed_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, now())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, now())
     `,
     [
       id("gemini"),
       sessionId,
+      userId || null,
       keyMode,
       config.gemini.model,
       config.gemini.model,
@@ -68,6 +70,14 @@ router.post("/gemini", async (req, res) => {
     return;
   }
 
+  let currentUser = null;
+  try {
+    currentUser = await optionalUser(req);
+  } catch (error) {
+    res.status(error.status || 401).json(jsonError(error.message || "로그인이 만료되었습니다."));
+    return;
+  }
+
   const keyMode = userApiKey ? "personal" : "shared";
   if (keyMode === "shared") {
     const usage = await readSharedUsage();
@@ -87,7 +97,7 @@ router.post("/gemini", async (req, res) => {
     return;
   }
 
-  const sessionId = await createSession({ keyMode, reportMode });
+  const sessionId = await createSession({ userId: currentUser?.id, keyMode, reportMode });
   let response;
   let body;
   try {
@@ -102,7 +112,7 @@ router.post("/gemini", async (req, res) => {
   const cost = keyMode === "shared" ? estimateCost(tokens) : { costUsd: 0, costKrw: 0 };
 
   try {
-    await recordGeminiRequest({ req, sessionId, keyMode, response, body, tokens, cost });
+    await recordGeminiRequest({ req, userId: currentUser?.id, sessionId, keyMode, response, body, tokens, cost });
   } catch (error) {
     res.status(500).json(jsonError(error?.message || "사용량을 저장하지 못했습니다."));
     return;

@@ -8,6 +8,7 @@ function numberFromEnv(name, fallback) {
 module.exports = {
   port: numberFromEnv("PORT", 3000),
   databaseUrl: process.env.DATABASE_URL || "",
+  sessionSecret: process.env.SESSION_SECRET || "local-dev-session-secret",
   gemini: {
     model: requestedModel === "gemini-2.5-flash-lite" ? "gemini-3.1-flash-lite" : requestedModel,
     apiBase: process.env.GEMINI_API_BASE || "https://generativelanguage.googleapis.com/v1beta",
@@ -21,6 +22,13 @@ module.exports = {
   billing: {
     paymentProvider: process.env.PAYMENT_PROVIDER || "app_store",
     passUsesPerPurchase: numberFromEnv("PASS_USES_PER_PURCHASE", 5),
+  },
+  toss: {
+    apiBase: (process.env.TOSS_API_BASE || "https://apps-in-toss-api.toss.im").replace(/\/+$/, ""),
+    mtlsCertPath: process.env.TOSS_MTLS_CERT_PATH || "",
+    mtlsKeyPath: process.env.TOSS_MTLS_KEY_PATH || "",
+    mtlsKeyPassword: process.env.TOSS_MTLS_KEY_PASSWORD || "",
+    loginMock: String(process.env.TOSS_LOGIN_MOCK || "").toLowerCase() === "true",
   },
   maxRequestBytes: numberFromEnv("MAX_REQUEST_BYTES", 4_500_000),
 };

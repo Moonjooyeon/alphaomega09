@@ -6,6 +6,7 @@
     "vite": "vite --host 127.0.0.1"
   },
   "dependencies": {
+    "@apps-in-toss/web-framework": "^3.0.3",
     "express": "^5.2.1",
     "pg": "^8.23.0",
     "react": "^19.1.1",

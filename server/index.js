@@ -2,6 +2,7 @@ const path = require("node:path");
 const express = require("express");
 const config = require("./config");
 const { migrate } = require("./db");
+const authRoutes = require("./routes/auth");
 const geminiRoutes = require("./routes/gemini");
 const healthRoutes = require("./routes/health");
 const usageRoutes = require("./routes/usage");
@@ -13,6 +14,7 @@ app.set("trust proxy", true);
 app.use(express.json({ limit: `${Math.ceil(config.maxRequestBytes / 1024)}kb` }));
 
 app.use("/api", healthRoutes);
+app.use("/api", authRoutes);
 app.use("/api", usageRoutes);
 app.use("/api", geminiRoutes);
 

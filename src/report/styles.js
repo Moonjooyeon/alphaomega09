@@ -246,6 +246,14 @@ export const CSS = `
 .gm-gate-btn{background:var(--ink);color:var(--form);border:none;padding:11px 24px;
     font:inherit;font-size:12px;letter-spacing:.24em;cursor:pointer;border-radius:0;flex:0 0 auto;}
 .gm-gate-btn:hover{background:var(--assay);}
+.gm-gate-btn:disabled{opacity:.48;cursor:not-allowed;}
+.gm-auth{display:flex;align-items:center;justify-content:space-between;gap:18px;}
+.gm-auth .gm-num{margin-bottom:8px;}
+.gm-auth-msg{margin:0;font-size:12.5px;line-height:1.8;color:var(--ink2);}
+.gm-auth-actions{display:flex;align-items:center;gap:10px;flex:0 0 auto;}
+.gm-auth-pill{border:1px solid var(--assay);color:var(--assay);padding:8px 12px;
+    font-size:10px;letter-spacing:.18em;white-space:nowrap;}
+@media(max-width:640px){.gm-auth{display:block}.gm-auth-actions{margin-top:13px;justify-content:flex-start;flex-wrap:wrap;}}
 
 /* 분류 명칭 · 희소도 */
 .gm-codename{display:flex;flex-wrap:wrap;gap:18px 34px;align-items:flex-end;

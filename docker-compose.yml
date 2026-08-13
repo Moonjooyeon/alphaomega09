@@ -3,14 +3,19 @@ services:
     build:
       context: .
       args:
+        VITE_API_BASE_ENDPOINT: /api
         VITE_GEMINI_ENDPOINT: /api/gemini
+        VITE_TOSS_LOGIN_MOCK: ${VITE_TOSS_LOGIN_MOCK:-false}
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - ./secrets/toss:/app/secrets/toss:ro
     environment:
       NODE_ENV: production
       PORT: 3000
       DATABASE_URL: postgresql://alphaomega:${POSTGRES_PASSWORD}@db:5432/alphaomega
+      SESSION_SECRET: ${SESSION_SECRET}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_API_BASE: ${GEMINI_API_BASE:-https://generativelanguage.googleapis.com/v1beta}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
@@ -22,6 +27,11 @@ services:
       MAX_REQUEST_BYTES: ${MAX_REQUEST_BYTES:-4500000}
       PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-app_store}
       PASS_USES_PER_PURCHASE: ${PASS_USES_PER_PURCHASE:-5}
+      TOSS_API_BASE: ${TOSS_API_BASE:-https://apps-in-toss-api.toss.im}
+      TOSS_MTLS_CERT_PATH: ${TOSS_MTLS_CERT_PATH:-/app/secrets/toss/sentiGuide_public.crt}
+      TOSS_MTLS_KEY_PATH: ${TOSS_MTLS_KEY_PATH:-/app/secrets/toss/sentiGuide_private.key}
+      TOSS_MTLS_KEY_PASSWORD: ${TOSS_MTLS_KEY_PASSWORD:-}
+      TOSS_LOGIN_MOCK: ${TOSS_LOGIN_MOCK:-false}
     ports:
       - "${HTTP_PORT:-8080}:3000"
     restart: unless-stopped

@@ -12,15 +12,18 @@ Docker Compose 기준 백엔드 배포 메모.
 - `GET /api/health`: 서버/DB/Gemini 환경 확인
 - `GET /api/usage`: 공용 Gemini key 누적 사용량 확인
 - `POST /api/gemini`: Gemini 프록시
+- `POST /api/toss/login`: 토스 로그인 인가 코드 교환 및 서비스 세션 발급
+- `GET /api/me`: 현재 로그인 사용자 확인
 
 `POST /api/gemini`은 요청 본문에 `userApiKey`가 있으면 개인 key를 쓰고, 없으면 서버 환경변수 `GEMINI_API_KEY`를 사용한다.
 현재 구현은 공용 key 비용 한도와 요청 로그를 먼저 연결해둔 상태이며, 인앱 결제/이용권 차감은 다음 단계에서 켠다.
+로그인된 요청은 `Authorization: Bearer <token>` 헤더로 `usage_sessions`, `gemini_requests`에 `user_id`를 연결한다.
 
 ## 실행
 
 ```bash
 cp .env.example .env
-# .env에 POSTGRES_PASSWORD, GEMINI_API_KEY 입력
+# .env에 POSTGRES_PASSWORD, SESSION_SECRET, GEMINI_API_KEY, Toss mTLS 경로 입력
 docker compose up -d --build
 curl http://127.0.0.1:8080/api/health
 ```
@@ -28,13 +31,32 @@ curl http://127.0.0.1:8080/api/health
 ## 운영 환경변수
 
 - `POSTGRES_PASSWORD`
+- `SESSION_SECRET`
 - `GEMINI_API_KEY`
+- `GEMINI_API_BASE`
 - `GEMINI_MODEL`
 - `GEMINI_COST_LIMIT_KRW`
 - `USD_TO_KRW`
 - `PAYMENT_PROVIDER`
 - `PASS_USES_PER_PURCHASE`
+- `TOSS_API_BASE`
+- `TOSS_MTLS_CERT_PATH`
+- `TOSS_MTLS_KEY_PATH`
+- `TOSS_MTLS_KEY_PASSWORD`
+- `TOSS_LOGIN_MOCK`
+- `VITE_API_BASE_ENDPOINT`
+- `VITE_GEMINI_ENDPOINT`
+- `VITE_TOSS_LOGIN_MOCK`
 - `HTTP_PORT`
+
+## 현재 진행 상태
+
+- 토스 로그인 API와 프론트 로그인 버튼은 연결 완료.
+- 토스 AccessToken/RefreshToken은 서버에서만 다루고 프론트로 내리지 않음.
+- 로그인 성공 시 `app_users.login_id = toss:<userKey>`로 저장.
+- 로그인된 검사 요청은 `usage_sessions`, `gemini_requests`에 `user_id`를 저장.
+- 실제 토스 앱/샌드박스 + mTLS 인증서 환경에서의 왕복 검증은 아직 필요.
+- 결제/이용권 발급/차감은 아직 미연결.
 
 ## 운영 실수 방지
 
@@ -45,6 +67,8 @@ curl http://127.0.0.1:8080/api/health
 - 한 검사에 여러 AI 호출이 있어도 최종 결과 확정 후 `charge_key` 기준으로 1회만 차감한다.
 - 응답 길이 초과가 잦으면 모델/토큰/프롬프트를 먼저 줄이고, 차감 로직을 먼저 건드리지 않는다.
 - 앱 번들 또는 인앱 플랫폼 업로드가 필요한 배포는 빌드 산출물 경로와 업로드 버전을 기록한다.
+- 토스 로그인 인가 코드는 프론트에 저장하지 않고 즉시 서버로 보낸다.
+- Toss AccessToken/RefreshToken은 프론트로 내리지 않는다.
 
 ## 다음 단계
 
