@@ -577,15 +577,15 @@ function localMockReport(subjects, solo) {
         suppression_failure: "밀폐된 공간에서 특정 대상의 잔향이 겹치면 목덜미를 가리고도 몸이 먼저 반응해, 피하려는 동작이 오히려 더 노골적인 신호가 된다.",
         heat_management: [
           { label: "억제제 반응", note: "정량을 먹고도 목덜미의 단향은 얇게 새며, 약효가 돌수록 오히려 숨을 참는 버릇이 노골적으로 드러난다." },
-          { label: "파트너 유무", note: "고정 파트너를 두지 않으려 하지만 특정 향이 가까워지면 둥지 가장자리까지 밀려나와, 거절과 대기를 같은 얼굴로 한다." },
-          { label: "혼자 버티는 법", note: "혼자 견딜 때는 천을 겹겹이 끌어안고 문 쪽을 등진다. 손끝이 떨릴수록 상대의 물건을 더 깊숙이 숨긴다." },
+          { label: "파트너 유무", note: "고정 파트너를 두지 않으려 하지만 특정 향이 가까워지면 대체 안정 구역 밖으로 밀려나와, 거절과 대기를 같은 얼굴로 한다." },
+          { label: "혼자 버티는 법", note: "혼자 견딜 때는 둥지를 만들지 못하고 문 쪽을 등진다. 손끝이 떨릴수록 상대의 물건을 보이지 않는 곳에 숨긴다." },
         ],
         rut_management: [
           { label: "억제제 반응", note: "억제제를 먹어도 발신향의 밑맛은 남아, 말수가 줄어들수록 낮은 목소리와 손등의 힘줄이 먼저 들킨다." },
           { label: "파트너 유무", note: "임시 파트너보다 특정 상대 하나에 안정성이 몰린다. 그 향이 멀어지면 동선을 장악하려는 충동이 선명해진다." },
           { label: "혼자 버티는 법", note: "혼자 버틸 때는 출입구에서 먼 곳에 앉아 손을 묶듯 감추고, 이름을 부르지 않으려고 이를 악문다." },
         ],
-        nesting: "둥지는 넓은 방보다 좁고 천이 겹친 곳에서 안정되며, 상대의 향이 밴 물건이 하나만 섞여도 방어선이 빠르게 느슨해진다.",
+        nesting: "둥지 형성은 불완전하다. 좁은 공간과 익숙한 천을 찾지만, 특정 향이 밴 물건이 없으면 안정 구역을 끝까지 완성하지 못한다.",
         isolation_warning: "완전 격리는 불안을 키우지만, 너무 가까운 거리는 발현을 노골적으로 앞당긴다.",
       },
       prognosis: {
@@ -609,20 +609,20 @@ function localMockReport(subjects, solo) {
         }
       : a.role === "오메가" && b.role === "오메가"
       ? {
-          heat: `${a.name}의 히트가 오면 ${b.name}은 둥지 밖에 남아 있으려 하지만, 새는 단향에 먼저 옷소매를 접어 쥔다.`,
-          rut: `${b.name}의 히트가 오면 ${a.name}은 괜찮은 척 물러나도 상대의 천과 체온을 따라 둥지 가장자리까지 돌아온다.`,
-          together: "둘 다 히트를 버틸 때는 억제제보다 둥지의 배치가 먼저 무너진다. 서로의 물건을 하나씩 숨기며 버티는 방식으로 안정된다.",
-          failure: "가장 위험한 조건은 한쪽의 둥지에 다른 쪽의 향이 밴 물건이 섞이는 순간이다.",
+          heat: `${a.name}의 히트가 오면 ${b.name}은 둥지 밖에 남아 있으려 하지만, 상대가 둥지를 만들지 못하고 배회하면 먼저 옷소매를 접어 쥔다.`,
+          rut: `${b.name}의 히트가 오면 ${a.name}은 괜찮은 척 물러나도 상대의 천과 체온을 따라 대체 안정 구역 가장자리까지 돌아온다.`,
+          together: "둘 다 히트를 버틸 때는 억제제보다 안정 행동의 리듬이 먼저 무너진다. 서로의 물건을 하나씩 숨기거나 밀어내며 버틴다.",
+          failure: "가장 위험한 조건은 한쪽이 만든 안정 구역에 다른 쪽의 향이 밴 물건이 섞이는 순간이다.",
         }
       : a.role === "오메가" && b.role === "알파"
       ? {
-          heat: `${a.name}의 히트가 오면 ${b.name}은 문밖에 서서 안 들어가는 척하지만, 둥지 안쪽 향이 새는 순간 목소리부터 낮아진다.`,
+          heat: `${a.name}의 히트가 오면 ${b.name}은 문밖에 서서 안 들어가는 척하지만, 안정 구역의 향이 새는 순간 목소리부터 낮아진다.`,
           rut: `${b.name}의 러트가 오면 ${a.name}은 먼저 피하는 척 발끝으로 거리를 확인하고, 잡히기 직전에야 숨을 삼키며 멈춘다.`,
           together: "둘이 같이 버틸 때는 억제제를 챙긴 쪽이 더 먼저 무너진다. 약효보다 서로의 잔향이 빠르게 돌아서, 말 대신 손목과 발목의 거리가 가까워진다.",
           failure: "가장 위험한 조건은 한쪽이 괜찮은 척 물러난 뒤 다른 쪽이 그 향을 따라오는 순간이다.",
         }
       : {
-          heat: `${b.name}의 히트가 오면 ${a.name}은 문밖에 서서 안 들어가는 척하지만, 둥지 안쪽 향이 새는 순간 목소리부터 낮아진다.`,
+          heat: `${b.name}의 히트가 오면 ${a.name}은 문밖에 서서 안 들어가는 척하지만, 안정 구역의 향이 새는 순간 목소리부터 낮아진다.`,
           rut: `${a.name}의 러트가 오면 ${b.name}은 먼저 피하는 척 발끝으로 거리를 확인하고, 잡히기 직전에야 숨을 삼키며 멈춘다.`,
           together: "둘이 같이 버틸 때는 억제제를 챙긴 쪽이 더 먼저 무너진다. 약효보다 서로의 잔향이 빠르게 돌아서, 말 대신 손목과 발목의 거리가 가까워진다.",
           failure: "가장 위험한 조건은 한쪽이 괜찮은 척 물러난 뒤 다른 쪽이 그 향을 따라오는 순간이다.",
@@ -656,6 +656,11 @@ function localMockReport(subjects, solo) {
       stability: 64,
       rationale: "시선은 피하면서도 발끝으로 콕콕 건드리는 도발이 반복되고, 물러난 뒤에는 향 추적 반응이 더 선명해진다.",
       note: "가까이 있으면 얌전해지고 떨어지면 더 깊게 남는 반응이라, 확정 전 단계임에도 분리 구간에서 안정성이 오른다.",
+    },
+    imprint_loss: {
+      a: `${b.name}이 사망하면 ${a.name}은 즉각적인 붕괴보다 먼저 향을 찾는 행동이 반복된다. 남은 물건을 정리하지 못하고, 발목 안쪽의 각인 반응이 통증처럼 늦게 올라온다.`,
+      b: `${a.name}이 사망하면 ${b.name}은 울음보다 억제가 먼저 풀린다. 익숙한 발신향이 끊긴 자리에 자기 향을 덧씌우려 하며, 밤마다 같은 동선을 되짚는다.`,
+      note: "사망 반응은 애도보다 잔향 추적이 먼저 관찰되는 유형이다. 재각인 가능성은 낮고, 대체 자극에 대한 거부가 길게 남는다.",
     },
     cycle_interaction: cycleInteraction,
     prognosis: {
@@ -1098,16 +1103,16 @@ ${solo ? `
 [검사 구분] 단일 개체 검사다. 대상 B는 존재하지 않는다. 교차반응·적합률·향 동조율·각인 부위 판정을 하지 마라. 각인은 문진에 답한 기왕력만 imprint_history에 기록한다.
 traits.metrics는 다음 다섯 항목을 이 순서로 채운다: 신호 발신 강도 / 감응 역치 / 자기 억제력 / 유대 형성 경향 / 각인 수용성. level은 1~5.
 codename은 관계가 아니라 이 개체 자신의 분류 명칭으로, counterfactual은 이 개체가 다른 판정을 받았을 경우의 가정으로 쓴다.\nprognosis는 관계 경과가 아니라 이 개체 자신의 경과다. phase_1은 평시 상태, phase_2는 과부하 상황, phase_3은 장기 전망으로 쓴다.
-cycle_profile은 단일 개체 결과지의 핵심이다. 역할에 따라 독자가 "이 캐릭터가 왜 위험하고 매혹적인지" 바로 상상할 수 있게 적는다. 문체는 임상 보고서지만 내용은 관능적 긴장, 페로몬, 참는 숨, 시선 회피, 접촉 직전의 거리감이 살아야 한다. 직접적인 성행위 묘사는 하지 말고, 속된말로 꼴리는 반응성을 페로몬/체온/목소리/손끝/둥지/동선의 변화로 암시한다.
+cycle_profile은 단일 개체 결과지의 핵심이다. 역할에 따라 독자가 "이 캐릭터가 왜 위험하고 매혹적인지" 바로 상상할 수 있게 적는다. 문체는 임상 보고서지만 내용은 관능적 긴장, 페로몬, 참는 숨, 시선 회피, 접촉 직전의 거리감이 살아야 한다. 직접적인 성행위 묘사는 하지 말고, 속된말로 꼴리는 반응성을 페로몬/체온/목소리/손끝/안정 행동/동선의 변화로 암시한다.
 - 대상 role이 "오메가"면 결과 화면에는 heat_cycle, precursor, suppression_failure, heat_management, nesting, isolation_warning만 주로 노출된다. heat_cycle은 "히트 주기", suppression_failure는 "히트 반응"으로 보인다.
 - 대상 role이 "알파"면 결과 화면에는 rut_cycle, precursor, suppression_failure, rut_management, isolation_warning만 주로 노출된다. rut_cycle은 "러트 주기", suppression_failure는 "러트 반응"으로 보인다.
 - heat_cycle: 오메가의 히트 주기. 날짜 간격뿐 아니라 주기가 가까워질수록 향·체온·감각이 어떻게 달라지는지 한 문장으로 적는다.
 - rut_cycle: 알파의 러트 주기. 날짜 간격뿐 아니라 주기가 가까워질수록 발신향·목소리·집착성이 어떻게 달라지는지 한 문장으로 적는다.
 - precursor: 발현 24~72시간 전 전조. 목덜미, 손끝, 숨, 옷깃, 특정 향에 대한 반응 같은 감각적 단서를 한 문장으로 적는다.
 - suppression_failure: 역할에 맞춰 히트 반응 또는 러트 반응으로 읽히는 핵심 문장. 억제가 무너지는 조건과 그 순간의 반응을 관능적으로 적는다.
-- heat_management: 화면에서는 "히트 반응" 카드 3개로 보인다. 반드시 1) 억제제를 먹고 버티는지/안 먹는지/먹어도 새는 반응, 2) 파트너를 두는지/안 두는지/누가 가까이 있으면 무너지는지, 3) 혼자 견디는지/못 견디는지/혼자 버틴다면 둥지에서 어떻게 버티는지를 각각 포함한다. label은 "억제제 반응", "파트너 유무", "혼자 버티는 법"처럼 선명하게 쓴다. 단순 처방법이 아니라 히트 때 드러나는 반응을 쓴다. 오메가면 둥지에 숨어드는 행동, 체온 상승, 향 차단 실패, 접촉 욕구를 참는 몸짓을 포함한다.
+- heat_management: 화면에서는 "히트 반응" 카드 3개로 보인다. 반드시 1) 억제제를 먹고 버티는지/안 먹는지/먹어도 새는 반응, 2) 파트너를 두는지/안 두는지/누가 가까이 있으면 무너지는지, 3) 혼자 견디는지/못 견디는지/혼자 버틴다면 어떤 안정 행동으로 버티는지를 각각 포함한다. label은 "억제제 반응", "파트너 유무", "혼자 버티는 법"처럼 선명하게 쓴다. 단순 처방법이 아니라 히트 때 드러나는 반응을 쓴다. 오메가면 둥지 형성 여부를 판단해 둥지를 트는 타입, 둥지를 만들려다 실패하는 타입, 둥지를 거부하고 대체 안정 행동에 의존하는 타입 중 하나로 구체화한다. 둥지를 무조건 확정하지 마라.
 - rut_management: 화면에서는 "러트 반응" 카드 3개로 보인다. 반드시 1) 억제제를 먹고 버티는지/안 먹는지/먹어도 새는 발신향, 2) 파트너를 두는지/안 두는지/특정 상대가 있어야 안정되는지, 3) 혼자 견디는지/못 견디는지/혼자 버틴다면 동선·손·목소리를 어떻게 통제하는지를 각각 포함한다. label은 "억제제 반응", "파트너 유무", "혼자 버티는 법"처럼 선명하게 쓴다. 단순 처방법이 아니라 러트 때 드러나는 반응을 쓴다. 알파면 동선 장악, 낮아지는 목소리, 향 발신 증가, 특정 상대를 놓치지 않으려는 충동을 포함한다.
-- nesting: 오메가 둥지 관련 소견. 무엇을 끌어모으고 어떤 냄새/재질/공간에서 무너지는지 관능적으로 적는다. 알파라면 비워도 된다.
+- nesting: 오메가의 둥지/대체 안정 행동 소견. 둥지를 형성하는지, 형성하지 않는지, 만들려다 실패하는지, 특정 물건이나 장소 없이는 안정되지 않는지 판단해서 적는다. 둥지를 무조건 트는 것으로 쓰지 마라. 알파라면 비워도 된다.
 - isolation_warning: 혼자 두면 악화되는지, 가까이 있으면 더 위험한지에 대한 경고문 한 문장.
 ` : `
 [검사 구분] 페어 검사다. 두 사람의 관계성을 독자가 장면으로 상상할 수 있게, 교차반응·각인·경과 예측에 오타쿠적 긴장감을 넣는다. 직접적인 성행위 묘사는 하지 말고, 사소한 접촉, 발끝으로 콕콕 건드리는 도발, 손목을 잡기 직전의 정지, 시선 회피, 옷깃·향·거리감 같은 작은 신호로 관계를 꼴리게 만든다.
@@ -1116,12 +1121,13 @@ cycle_profile은 단일 개체 결과지의 핵심이다. 역할에 따라 독�
 - cross_reaction.caution: 단순 주의문 대신 "둘 중 누가 먼저 참는 척하는지", "누가 먼저 건드리고 누가 늦게 무너지는지"를 임상 경고처럼 쓴다.
 - imprint.rationale: 각인 방향의 이유를 사소한 행동 신호로 적는다. 발끝으로 콕콕 찌르기, 옷소매 잡기, 고개 돌린 채 가까워지기, 일부러 이름을 부르지 않기 같은 관계성 행동을 넣어도 된다.
 - imprint.note: 각인이 안정되거나 흔들리는 순간을 쓴다. "가까이 있으면 얌전해지고, 떨어지면 더 선명해지는" 식의 역설을 선호한다.
+- imprint_loss: 각인한 상대가 사망했을 때 각 개체가 보이는 반응을 적는다. a에는 대상 A의 반응, b에는 대상 B의 반응, note에는 두 반응의 공통 위험 소견을 쓴다. 미형성 또는 표층 각인이라도 "무반응"으로 비우지 말고, 잔향 추적/둥지 붕괴/발신향 과다/억제 실패/재각인 거부처럼 세계관적 후유증을 임상 문체로 적는다. 직접적인 자해 묘사는 하지 말고, 향·동선·물건·수면·억제제 반응으로 표현한다.
 - cycle_interaction: 페어 결과지의 핵심이다. 서로의 히트와 러트 때 어떻게 반응하는지 적는다. heat/rut 키 이름은 레거시이므로 화면 라벨은 role 조합에 따라 바뀐다.
   - 알파×오메가면 heat에는 오메가의 히트 때 알파가 어떻게 다가오거나 물러나는지, rut에는 알파의 러트 때 오메가가 어떻게 피하거나 받아치는지 쓴다.
   - 알파×알파면 heat에는 대상 A의 러트 때 대상 B가 어떻게 반응하는지, rut에는 대상 B의 러트 때 대상 A가 어떻게 반응하는지 쓴다. 히트라는 말을 쓰지 마라.
   - 오메가×오메가면 heat에는 대상 A의 히트 때 대상 B가 어떻게 반응하는지, rut에는 대상 B의 히트 때 대상 A가 어떻게 반응하는지 쓴다. 러트라는 말을 쓰지 마라.
   - together는 둘이 같이 버티는 방식과 억제제/파트너성/거리 조절을, failure는 둘이 함께 있을 때 가장 먼저 무너지는 조건을 적는다.
-  직접적인 성행위 묘사는 하지 말고 향, 목소리, 둥지, 손목, 발목, 발끝 도발, 문밖에서 버티는 행동으로 관능적 긴장을 만든다.
+  직접적인 성행위 묘사는 하지 말고 향, 목소리, 안정 구역, 손목, 발목, 발끝 도발, 문밖에서 버티는 행동으로 관능적 긴장을 만든다. 오메가의 히트라도 둥지 형성은 확정하지 말고 관계성과 성향에 따라 형성/미형성/실패/대체 행동으로 나눈다.
 - prognosis.phase_1~3: 1기는 서로 아닌 척하는 접촉, 2기는 도발과 회피의 반복, 3기는 떨어져도 향이 먼저 돌아오는 장기 패턴처럼 서사적으로 적는다.
 - oneline: 팬들이 저장하고 싶을 만큼 관계성 한 줄로 쓴다. 서로의 약점, 도발, 참는 척, 먼저 무너지는 쪽이 드러나야 한다.
 `}
@@ -1134,7 +1140,7 @@ cycle_profile은 단일 개체 결과지의 핵심이다. 역할에 따라 독�
 - 모든 level은 1~5, 모든 percent 계열 숫자는 0~100 정수로 쓴다.
 
 [출력] 어떤 경우에도 아래 JSON만 출력한다. 코드펜스·설명·서두·반려 사유를 붙이지 마라.
-${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":{"family":"","top":"","heart":"","base":"","intensity":0,"persistence":"","diffusion":"","trigger":"","scent_code":""},"evidence":["",""],"remarks":""},"codename":"","rarity":{"total":0,"count":0},"counterfactual":"","warning":"","oneline":"","traits":{"metrics":[{"label":"신호 발신 강도","level":0},{"label":"감응 역치","level":0},{"label":"자기 억제력","level":0},{"label":"유대 형성 경향","level":0},{"label":"각인 수용성","level":0}],"note":""},"imprint_history":{"status":"","note":""},"cycle_profile":{"heat_cycle":"","rut_cycle":"","precursor":"","suppression_failure":"","heat_management":[{"label":"","note":""},{"label":"","note":""},{"label":"","note":""}],"rut_management":[{"label":"","note":""},{"label":"","note":""},{"label":"","note":""}],"nesting":"","isolation_warning":""},"prognosis":{"phase_1":"","phase_2":"","phase_3":""},"examiner_note":""}` : `{"subjects":[{"name":"","role":"","grade":"","confidence":0,"pheromone":{"family":"","top":"","heart":"","base":"","intensity":0,"persistence":"","diffusion":"","trigger":"","scent_code":""},"evidence":["",""],"remarks":""}],"codename":"","rarity":{"total":0,"count":0},"counterfactual":"","warning":"","oneline":"","cross_reaction":{"type_name":"","compatibility":0,"scent_sync":0,"scent_note":"","metrics":[{"label":"유대 형성 속도","level":0},{"label":"신호 간섭도","level":0},{"label":"상호 억제 가능성","level":0},{"label":"분리 내성","level":0},{"label":"장기 안정성","level":0}],"caution":""},"imprint":{"from":"","to":"","site_code":"","fixation":"","stability":0,"rationale":"","note":""},"cycle_interaction":{"heat":"","rut":"","together":"","failure":""},"prognosis":{"phase_1":"","phase_2":"","phase_3":""},"examiner_note":""}`}`;
+${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":{"family":"","top":"","heart":"","base":"","intensity":0,"persistence":"","diffusion":"","trigger":"","scent_code":""},"evidence":["",""],"remarks":""},"codename":"","rarity":{"total":0,"count":0},"counterfactual":"","warning":"","oneline":"","traits":{"metrics":[{"label":"신호 발신 강도","level":0},{"label":"감응 역치","level":0},{"label":"자기 억제력","level":0},{"label":"유대 형성 경향","level":0},{"label":"각인 수용성","level":0}],"note":""},"imprint_history":{"status":"","note":""},"cycle_profile":{"heat_cycle":"","rut_cycle":"","precursor":"","suppression_failure":"","heat_management":[{"label":"","note":""},{"label":"","note":""},{"label":"","note":""}],"rut_management":[{"label":"","note":""},{"label":"","note":""},{"label":"","note":""}],"nesting":"","isolation_warning":""},"prognosis":{"phase_1":"","phase_2":"","phase_3":""},"examiner_note":""}` : `{"subjects":[{"name":"","role":"","grade":"","confidence":0,"pheromone":{"family":"","top":"","heart":"","base":"","intensity":0,"persistence":"","diffusion":"","trigger":"","scent_code":""},"evidence":["",""],"remarks":""}],"codename":"","rarity":{"total":0,"count":0},"counterfactual":"","warning":"","oneline":"","cross_reaction":{"type_name":"","compatibility":0,"scent_sync":0,"scent_note":"","metrics":[{"label":"유대 형성 속도","level":0},{"label":"신호 간섭도","level":0},{"label":"상호 억제 가능성","level":0},{"label":"분리 내성","level":0},{"label":"장기 안정성","level":0}],"caution":""},"imprint":{"from":"","to":"","site_code":"","fixation":"","stability":0,"rationale":"","note":""},"imprint_loss":{"a":"","b":"","note":""},"cycle_interaction":{"heat":"","rut":"","together":"","failure":""},"prognosis":{"phase_1":"","phase_2":"","phase_3":""},"examiner_note":""}`}`;
 
     const parts = [{ text: prompt }];
     if (imgMode === "개별") {
@@ -1791,6 +1797,19 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
                   </>
                 );
               })()}
+              {data.imprint_loss && (
+                <div className="gm-hist" style={{ marginTop: 18 }}>
+                  <span>각인 상대 사망 시 반응</span>
+                  <b>잔향 결손 반응</b>
+                  {data.imprint_loss.a && (
+                    <p>{data.subjects?.[0]?.name || "개체 A"} — {data.imprint_loss.a}</p>
+                  )}
+                  {data.imprint_loss.b && (
+                    <p>{data.subjects?.[1]?.name || "개체 B"} — {data.imprint_loss.b}</p>
+                  )}
+                  {data.imprint_loss.note && <p>{data.imprint_loss.note}</p>}
+                </div>
+              )}
             </div>
 
             {data.cycle_interaction && (
