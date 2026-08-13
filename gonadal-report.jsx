@@ -103,7 +103,7 @@ const CSS = `
 /* results */
 .gm-subj{border:1px solid var(--rule);padding:15px 16px;margin-bottom:14px;}
 .gm-subj-hd{display:flex;gap:15px;align-items:flex-start;}
-.gm-photo{width:86px;height:108px;object-fit:cover;flex:0 0 86px;
+.gm-photo{width:86px;height:108px;object-fit:contain;flex:0 0 86px;
       border:1px solid var(--rule);filter:grayscale(.42) contrast(1.06);display:block;}
 .gm-scent{margin-top:14px;border-top:1px dotted var(--rule);padding-top:12px;}
 .gm-scent-hd{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;}
@@ -291,7 +291,7 @@ const CSS = `
     display:flex;align-items:center;justify-content:center;padding:0;text-align:center;
     font-size:9px;letter-spacing:.1em;color:var(--ink2);cursor:pointer;touch-action:none;}
 .gm-adj-view:hover{border-color:var(--assay);}
-.gm-adj-view img{width:100%;height:100%;object-fit:cover;display:block;cursor:grab;
+.gm-adj-view img{width:100%;height:100%;object-fit:contain;display:block;cursor:grab;
     filter:grayscale(.4) contrast(1.06);user-select:none;-webkit-user-drag:none;
     transform-origin:50% 50%;will-change:transform;}
 .gm-adj-view img:active{cursor:grabbing;}
@@ -311,7 +311,7 @@ const CSS = `
 .gm-crop-stage{height:min(58vh,440px);border:1px solid var(--ink);background:#0f120f;
     overflow:hidden;position:relative;touch-action:none;cursor:grab;}
 .gm-crop-stage:active{cursor:grabbing;}
-.gm-crop-stage img{width:100%;height:100%;object-fit:cover;display:block;
+.gm-crop-stage img{width:100%;height:100%;object-fit:contain;display:block;
     user-select:none;-webkit-user-drag:none;transform-origin:50% 50%;will-change:transform;}
 .gm-crop-mask{position:absolute;inset:0;box-shadow:inset 0 0 0 999px rgba(0,0,0,.22);
     border:1px dashed rgba(252,252,248,.72);pointer-events:none;}
@@ -325,11 +325,11 @@ const CSS = `
 .gm-crop-actions button:hover{border-color:var(--assay);color:var(--assay);}
 .gm-crop-actions button[data-primary="1"]:hover{background:var(--assay);color:var(--form);}
 @media(max-width:540px){.gm-crop-modal{padding:14px}.gm-crop-stage{height:360px;}.gm-crop-ctl{grid-template-columns:1fr;}}
-.gm-photo-wrap{width:86px;height:108px;flex:0 0 86px;border:1px solid var(--rule);overflow:hidden;}
-.gm-photo-wrap img{width:100%;height:100%;object-fit:cover;display:block;
+.gm-photo-wrap{width:86px;height:108px;flex:0 0 86px;border:1px solid var(--rule);overflow:hidden;background:#f1f2ec;}
+.gm-photo-wrap img{width:100%;height:100%;object-fit:contain;display:block;
     filter:grayscale(.45) contrast(1.08) brightness(1.02);}
-.gm-pairfig-view{height:300px;overflow:hidden;}
-.gm-pairfig-view img{width:100%;height:100%;object-fit:cover;display:block;
+.gm-pairfig-view{height:300px;overflow:hidden;background:#f1f2ec;}
+.gm-pairfig-view img{width:100%;height:100%;object-fit:contain;display:block;
     filter:grayscale(.45) contrast(1.08);}
 
 /* 이미지 모드 */
@@ -339,9 +339,9 @@ const CSS = `
     font:inherit;font-size:10.5px;letter-spacing:.12em;color:var(--ink2);cursor:pointer;
     padding:0;overflow:hidden;border-radius:0;display:block;}
 .gm-pairdrop:hover{border-color:var(--assay);color:var(--assay);}
-.gm-pairdrop img{width:100%;height:100%;object-fit:cover;filter:grayscale(.35);display:block;}
+.gm-pairdrop img{width:100%;height:100%;object-fit:contain;filter:grayscale(.35);display:block;}
 .gm-pairfig{margin:0 0 18px;border:1px solid var(--rule);padding:7px;}
-.gm-pairfig img{width:100%;max-height:300px;object-fit:cover;display:block;
+.gm-pairfig img{width:100%;max-height:300px;object-fit:contain;display:block;
     filter:grayscale(.45) contrast(1.08);}
 .gm-pairfig figcaption{font-size:9px;letter-spacing:.16em;color:var(--ink2);padding:8px 2px 2px;}
 
@@ -599,18 +599,46 @@ function localMockReport(subjects, solo) {
 
   const a = subject(subjects[0], "개체 A", "알파", "우성", "A");
   const b = subject(subjects[1], "개체 B", "오메가", "우성", "B");
+  const cycleInteraction =
+    a.role === "알파" && b.role === "알파"
+      ? {
+          heat: `${a.name}의 러트가 오면 ${b.name}은 먼저 물러나는 척하지만, 낮아진 목소리가 닿는 순간 발끝으로 거리를 다시 잰다.`,
+          rut: `${b.name}의 러트가 오면 ${a.name}은 문가를 막지 않는 척 서 있다가, 발신향이 겹치는 순간 손목보다 시선을 먼저 붙든다.`,
+          together: "둘 다 러트를 버틸 때는 억제제를 챙긴 쪽이 더 먼저 티가 난다. 서로의 발신향이 맞물리면 말수가 줄고, 동선만 점점 좁아진다.",
+          failure: "가장 위험한 조건은 둘 중 하나가 주도권을 양보하는 척하며 상대의 퇴로를 남겨두는 순간이다.",
+        }
+      : a.role === "오메가" && b.role === "오메가"
+      ? {
+          heat: `${a.name}의 히트가 오면 ${b.name}은 둥지 밖에 남아 있으려 하지만, 새는 단향에 먼저 옷소매를 접어 쥔다.`,
+          rut: `${b.name}의 히트가 오면 ${a.name}은 괜찮은 척 물러나도 상대의 천과 체온을 따라 둥지 가장자리까지 돌아온다.`,
+          together: "둘 다 히트를 버틸 때는 억제제보다 둥지의 배치가 먼저 무너진다. 서로의 물건을 하나씩 숨기며 버티는 방식으로 안정된다.",
+          failure: "가장 위험한 조건은 한쪽의 둥지에 다른 쪽의 향이 밴 물건이 섞이는 순간이다.",
+        }
+      : a.role === "오메가" && b.role === "알파"
+      ? {
+          heat: `${a.name}의 히트가 오면 ${b.name}은 문밖에 서서 안 들어가는 척하지만, 둥지 안쪽 향이 새는 순간 목소리부터 낮아진다.`,
+          rut: `${b.name}의 러트가 오면 ${a.name}은 먼저 피하는 척 발끝으로 거리를 확인하고, 잡히기 직전에야 숨을 삼키며 멈춘다.`,
+          together: "둘이 같이 버틸 때는 억제제를 챙긴 쪽이 더 먼저 무너진다. 약효보다 서로의 잔향이 빠르게 돌아서, 말 대신 손목과 발목의 거리가 가까워진다.",
+          failure: "가장 위험한 조건은 한쪽이 괜찮은 척 물러난 뒤 다른 쪽이 그 향을 따라오는 순간이다.",
+        }
+      : {
+          heat: `${b.name}의 히트가 오면 ${a.name}은 문밖에 서서 안 들어가는 척하지만, 둥지 안쪽 향이 새는 순간 목소리부터 낮아진다.`,
+          rut: `${a.name}의 러트가 오면 ${b.name}은 먼저 피하는 척 발끝으로 거리를 확인하고, 잡히기 직전에야 숨을 삼키며 멈춘다.`,
+          together: "둘이 같이 버틸 때는 억제제를 챙긴 쪽이 더 먼저 무너진다. 약효보다 서로의 잔향이 빠르게 돌아서, 말 대신 손목과 발목의 거리가 가까워진다.",
+          failure: "가장 위험한 조건은 한쪽이 괜찮은 척 물러난 뒤 다른 쪽이 그 향을 따라오는 순간이다.",
+        };
   return {
     subjects: [a, b],
-    codename: "지연 점화형 페어",
+    codename: "제4류 · 발끝도발형",
     rarity: { total: 100, count: 9 },
-    counterfactual: "한쪽이 먼저 물러나면 안정되지만, 동시에 물러나면 반응이 더 오래 남는다.",
-    warning: "초기 접촉보다 접촉 후 분리 구간에서 변수가 크다.",
-    oneline: "붙어 있을 때보다 떨어진 뒤에 더 선명해지는 페어.",
+    counterfactual: "만약 둘 중 하나가 먼저 솔직해졌다면 교차반응은 안정됐겠지만, 지금처럼 오래 잔향을 끌고 가지는 않았을 것으로 추정된다.",
+    warning: "초기 접촉보다 접촉 직후 아닌 척 떨어지는 구간에서 변수가 크다.",
+    oneline: "발끝으로 먼저 건드린 쪽은 웃고, 늦게 무너진 쪽은 그 향을 밤새 기억하는 페어.",
     cross_reaction: {
-      type_name: "잔향 추적형 교차반응",
+      type_name: "발끝도발형 교차반응",
       compatibility: 78,
       scent_sync: 71,
-      scent_note: "편백 계열의 건조한 발신과 허벌 계열의 습한 잔향이 뒤늦게 맞물린다.",
+      scent_note: "붙어 있을 때는 담백하게 섞이지만, 한쪽이 발끝으로 거리를 건드리고 물러난 뒤에야 잔향이 더 노골적으로 맞물린다.",
       metrics: [
         { label: "유대 형성 속도", level: 3 },
         { label: "신호 간섭도", level: 4 },
@@ -618,23 +646,24 @@ function localMockReport(subjects, solo) {
         { label: "분리 내성", level: 2 },
         { label: "장기 안정성", level: 4 },
       ],
-      caution: "분리 직후의 재접촉은 각인 반응을 과장할 수 있다.",
+      caution: "먼저 건드리는 쪽은 가볍게 넘긴 척하지만, 늦게 반응하는 쪽의 향이 더 오래 남아 재접촉을 과장한다.",
     },
     imprint: {
       from: a.name,
       to: b.name,
-      site_code: "N-03 목덜미 후면",
+      site_code: "AN",
       fixation: "불완전 고정",
       stability: 64,
-      rationale: "시선 회피 이후에도 향 추적 반응이 남는다.",
-      note: "확정 각인 전 단계로 재검 시 변동 가능성이 있다.",
+      rationale: "시선은 피하면서도 발끝으로 콕콕 건드리는 도발이 반복되고, 물러난 뒤에는 향 추적 반응이 더 선명해진다.",
+      note: "가까이 있으면 얌전해지고 떨어지면 더 깊게 남는 반응이라, 확정 전 단계임에도 분리 구간에서 안정성이 오른다.",
     },
+    cycle_interaction: cycleInteraction,
     prognosis: {
-      phase_1: "초기에는 서로의 억제 양식이 충돌한다.",
-      phase_2: "중기에는 분리 구간에서 잔향 의존이 커진다.",
-      phase_3: "장기적으로는 규칙을 정한 재접촉이 안정성을 높인다.",
+      phase_1: "초기에는 둘 다 아닌 척하지만 발끝, 옷소매, 이름을 부르지 않는 침묵 같은 작은 접촉 신호가 먼저 늘어난다.",
+      phase_2: "중기에는 한쪽이 건드리고 물러나면 다른 쪽이 늦게 따라붙는 식의 도발과 회피가 반복된다.",
+      phase_3: "장기적으로는 떨어져 있을수록 향이 먼저 돌아와, 재회 순간보다 재회 직전의 긴장이 더 짙어진다.",
     },
-    examiner_note: "로컬 미리보기용 임시 판정입니다.",
+    examiner_note: "두 개체는 큰 사건보다 사소한 접촉 신호에 더 민감하다. 발끝 하나가 거리 전체를 흔드는 유형으로 기록한다.",
   };
 }
 
@@ -822,6 +851,26 @@ function Gauge({ value, label, tone }) {
   );
 }
 
+function pairCycleLabels(subjects = []) {
+  const a = subjects[0] || {};
+  const b = subjects[1] || {};
+  const an = a.name || "개체 A";
+  const bn = b.name || "개체 B";
+  if (a.role === "알파" && b.role === "알파") {
+    return [`${an} 러트 때`, `${bn} 러트 때`];
+  }
+  if (a.role === "오메가" && b.role === "오메가") {
+    return [`${an} 히트 때`, `${bn} 히트 때`];
+  }
+  if (a.role === "오메가" && b.role === "알파") {
+    return [`${an} 히트 때`, `${bn} 러트 때`];
+  }
+  if (a.role === "알파" && b.role === "오메가") {
+    return [`${bn} 히트 때`, `${an} 러트 때`];
+  }
+  return ["히트 때", "러트 때"];
+}
+
 export default function GonadalReport() {
   const [subj, setSubj] = useState([
     { name: "", line: "", img: null, mime: "", role: "자동", grade: "자동", adj: { ...DEF_ADJ } },
@@ -995,7 +1044,7 @@ export default function GonadalReport() {
 
 [판정 원칙]
 1. 모든 판정에는 근거가 있어야 한다. 근거란에는 제출된 프로필의 표현을 짧게 그대로 인용한다. 인용할 만한 문장이 없으면 등급을 낮은 신뢰도로 부여한다.
-2. 기본 등급은 우성 또는 열성이다. 극우성·극열성은 명확한 근거가 있을 때만 부여하며, 두 개체를 동시에 극단 등급으로 판정하지 않는다. 부득이한 경우 신뢰도를 70 미만으로 낮춘다. 판정(알파/오메가)은 페어를 알파×오메가로 고정하지 마라. 알파×알파, 오메가×오메가도 근거가 있으면 그대로 판정한다.
+2. 기본 등급은 우성 또는 열성이다. 극우성·극열성은 명확한 근거가 있을 때만 부여하며, 두 개체를 동시에 극단 등급으로 판정하지 않는다. 부득이한 경우 신뢰도를 70 미만으로 낮춘다. 판정(알파/오메가)은 페어를 알파×오메가로 고정하지 마라. 자동 판정일수록 두 사람을 따로 판정한 뒤 조합하라. 둘 다 발신·장악형이면 알파×알파, 둘 다 감응·수용형이면 오메가×오메가로 판정한다. 알파×알파, 오메가×오메가도 근거가 있으면 그대로 판정한다.
 3. 성별·외형의 남성성/여성성으로 판정이나 등급을 결정하지 마라. 판정은 (a)신호를 발신하는가 감응하는가 (b)공간의 주도권을 쥐는 방식으로 가른다. 등급은 (c)통제 상실 상황의 대처 (d)자기 상태의 노출/은폐 경향 (e)관계에서 거리를 정하는 주체로 가른다.
 4. 페로몬은 향수처럼 기술한다. 계열은 시트러스/플로럴/구르망/머스크/스파이시/우디/스모키/아쿠아틱 중 하나이며, 원형 배열이라 인접할수록 동조율이 높고 대극이면 낮다. 강도 차 3 이상이면 동조율 15%p 차감.
    각 개체마다 top(첫인상, 스치듯 맡는 향), heart(체온에 데워졌을 때 올라오는 향), base(옷과 침구에 남는 잔향)를 각각 다른 구체적 사물로 적는다. 추상어 대신 만질 수 있는 것으로 쓴다("따뜻한 향" 금지, "식은 커피와 젖은 모직" 가능).
@@ -1060,7 +1109,22 @@ cycle_profile은 단일 개체 결과지의 핵심이다. 역할에 따라 독�
 - rut_management: 화면에서는 "러트 반응" 카드 3개로 보인다. 반드시 1) 억제제를 먹고 버티는지/안 먹는지/먹어도 새는 발신향, 2) 파트너를 두는지/안 두는지/특정 상대가 있어야 안정되는지, 3) 혼자 견디는지/못 견디는지/혼자 버틴다면 동선·손·목소리를 어떻게 통제하는지를 각각 포함한다. label은 "억제제 반응", "파트너 유무", "혼자 버티는 법"처럼 선명하게 쓴다. 단순 처방법이 아니라 러트 때 드러나는 반응을 쓴다. 알파면 동선 장악, 낮아지는 목소리, 향 발신 증가, 특정 상대를 놓치지 않으려는 충동을 포함한다.
 - nesting: 오메가 둥지 관련 소견. 무엇을 끌어모으고 어떤 냄새/재질/공간에서 무너지는지 관능적으로 적는다. 알파라면 비워도 된다.
 - isolation_warning: 혼자 두면 악화되는지, 가까이 있으면 더 위험한지에 대한 경고문 한 문장.
-` : ""}
+` : `
+[검사 구분] 페어 검사다. 두 사람의 관계성을 독자가 장면으로 상상할 수 있게, 교차반응·각인·경과 예측에 오타쿠적 긴장감을 넣는다. 직접적인 성행위 묘사는 하지 말고, 사소한 접촉, 발끝으로 콕콕 건드리는 도발, 손목을 잡기 직전의 정지, 시선 회피, 옷깃·향·거리감 같은 작은 신호로 관계를 꼴리게 만든다.
+- cross_reaction.type_name: 두 사람 관계의 핵심 장력을 찌르는 이름으로 쓴다. 예: 회피추적형, 발끝도발형, 잔향잠복형, 상호억제형.
+- cross_reaction.scent_note: 두 향이 섞인 결과만 쓰지 말고, 둘이 붙어 있을 때와 떨어졌을 때의 차이를 한 문장에 담는다. 서로를 자극하는 방향이 보이게 쓴다.
+- cross_reaction.caution: 단순 주의문 대신 "둘 중 누가 먼저 참는 척하는지", "누가 먼저 건드리고 누가 늦게 무너지는지"를 임상 경고처럼 쓴다.
+- imprint.rationale: 각인 방향의 이유를 사소한 행동 신호로 적는다. 발끝으로 콕콕 찌르기, 옷소매 잡기, 고개 돌린 채 가까워지기, 일부러 이름을 부르지 않기 같은 관계성 행동을 넣어도 된다.
+- imprint.note: 각인이 안정되거나 흔들리는 순간을 쓴다. "가까이 있으면 얌전해지고, 떨어지면 더 선명해지는" 식의 역설을 선호한다.
+- cycle_interaction: 페어 결과지의 핵심이다. 서로의 히트와 러트 때 어떻게 반응하는지 적는다. heat/rut 키 이름은 레거시이므로 화면 라벨은 role 조합에 따라 바뀐다.
+  - 알파×오메가면 heat에는 오메가의 히트 때 알파가 어떻게 다가오거나 물러나는지, rut에는 알파의 러트 때 오메가가 어떻게 피하거나 받아치는지 쓴다.
+  - 알파×알파면 heat에는 대상 A의 러트 때 대상 B가 어떻게 반응하는지, rut에는 대상 B의 러트 때 대상 A가 어떻게 반응하는지 쓴다. 히트라는 말을 쓰지 마라.
+  - 오메가×오메가면 heat에는 대상 A의 히트 때 대상 B가 어떻게 반응하는지, rut에는 대상 B의 히트 때 대상 A가 어떻게 반응하는지 쓴다. 러트라는 말을 쓰지 마라.
+  - together는 둘이 같이 버티는 방식과 억제제/파트너성/거리 조절을, failure는 둘이 함께 있을 때 가장 먼저 무너지는 조건을 적는다.
+  직접적인 성행위 묘사는 하지 말고 향, 목소리, 둥지, 손목, 발목, 발끝 도발, 문밖에서 버티는 행동으로 관능적 긴장을 만든다.
+- prognosis.phase_1~3: 1기는 서로 아닌 척하는 접촉, 2기는 도발과 회피의 반복, 3기는 떨어져도 향이 먼저 돌아오는 장기 패턴처럼 서사적으로 적는다.
+- oneline: 팬들이 저장하고 싶을 만큼 관계성 한 줄로 쓴다. 서로의 약점, 도발, 참는 척, 먼저 무너지는 쪽이 드러나야 한다.
+`}
 [최종 감사 규칙]
 - 출력 직전에 JSON을 한 번 파싱 가능한 형태로 검사한다. 쉼표 누락, 따옴표 누락, 주석, 코드펜스, 앞뒤 설명은 모두 실패다.
 - evidence는 반드시 제출된 한 줄 설명이나 관찰 가능한 이미지 단서에서 온 짧은 구절만 쓴다.
@@ -1070,7 +1134,7 @@ cycle_profile은 단일 개체 결과지의 핵심이다. 역할에 따라 독�
 - 모든 level은 1~5, 모든 percent 계열 숫자는 0~100 정수로 쓴다.
 
 [출력] 어떤 경우에도 아래 JSON만 출력한다. 코드펜스·설명·서두·반려 사유를 붙이지 마라.
-${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":{"family":"","top":"","heart":"","base":"","intensity":0,"persistence":"","diffusion":"","trigger":"","scent_code":""},"evidence":["",""],"remarks":""},"codename":"","rarity":{"total":0,"count":0},"counterfactual":"","warning":"","oneline":"","traits":{"metrics":[{"label":"신호 발신 강도","level":0},{"label":"감응 역치","level":0},{"label":"자기 억제력","level":0},{"label":"유대 형성 경향","level":0},{"label":"각인 수용성","level":0}],"note":""},"imprint_history":{"status":"","note":""},"cycle_profile":{"heat_cycle":"","rut_cycle":"","precursor":"","suppression_failure":"","heat_management":[{"label":"","note":""},{"label":"","note":""},{"label":"","note":""}],"rut_management":[{"label":"","note":""},{"label":"","note":""},{"label":"","note":""}],"nesting":"","isolation_warning":""},"prognosis":{"phase_1":"","phase_2":"","phase_3":""},"examiner_note":""}` : `{"subjects":[{"name":"","role":"","grade":"","confidence":0,"pheromone":{"family":"","top":"","heart":"","base":"","intensity":0,"persistence":"","diffusion":"","trigger":"","scent_code":""},"evidence":["",""],"remarks":""}],"codename":"","rarity":{"total":0,"count":0},"counterfactual":"","warning":"","oneline":"","cross_reaction":{"type_name":"","compatibility":0,"scent_sync":0,"scent_note":"","metrics":[{"label":"유대 형성 속도","level":0},{"label":"신호 간섭도","level":0},{"label":"상호 억제 가능성","level":0},{"label":"분리 내성","level":0},{"label":"장기 안정성","level":0}],"caution":""},"imprint":{"from":"","to":"","site_code":"","fixation":"","stability":0,"rationale":"","note":""},"prognosis":{"phase_1":"","phase_2":"","phase_3":""},"examiner_note":""}`}`;
+${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":{"family":"","top":"","heart":"","base":"","intensity":0,"persistence":"","diffusion":"","trigger":"","scent_code":""},"evidence":["",""],"remarks":""},"codename":"","rarity":{"total":0,"count":0},"counterfactual":"","warning":"","oneline":"","traits":{"metrics":[{"label":"신호 발신 강도","level":0},{"label":"감응 역치","level":0},{"label":"자기 억제력","level":0},{"label":"유대 형성 경향","level":0},{"label":"각인 수용성","level":0}],"note":""},"imprint_history":{"status":"","note":""},"cycle_profile":{"heat_cycle":"","rut_cycle":"","precursor":"","suppression_failure":"","heat_management":[{"label":"","note":""},{"label":"","note":""},{"label":"","note":""}],"rut_management":[{"label":"","note":""},{"label":"","note":""},{"label":"","note":""}],"nesting":"","isolation_warning":""},"prognosis":{"phase_1":"","phase_2":"","phase_3":""},"examiner_note":""}` : `{"subjects":[{"name":"","role":"","grade":"","confidence":0,"pheromone":{"family":"","top":"","heart":"","base":"","intensity":0,"persistence":"","diffusion":"","trigger":"","scent_code":""},"evidence":["",""],"remarks":""}],"codename":"","rarity":{"total":0,"count":0},"counterfactual":"","warning":"","oneline":"","cross_reaction":{"type_name":"","compatibility":0,"scent_sync":0,"scent_note":"","metrics":[{"label":"유대 형성 속도","level":0},{"label":"신호 간섭도","level":0},{"label":"상호 억제 가능성","level":0},{"label":"분리 내성","level":0},{"label":"장기 안정성","level":0}],"caution":""},"imprint":{"from":"","to":"","site_code":"","fixation":"","stability":0,"rationale":"","note":""},"cycle_interaction":{"heat":"","rut":"","together":"","failure":""},"prognosis":{"phase_1":"","phase_2":"","phase_3":""},"examiner_note":""}`}`;
 
     const parts = [{ text: prompt }];
     if (imgMode === "개별") {
@@ -1729,8 +1793,23 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
               })()}
             </div>
 
+            {data.cycle_interaction && (
+              (() => {
+                const labels = pairCycleLabels(data.subjects);
+                return (
+                  <div className="gm-sec">
+                    <div className="gm-num"><b>Ⅳ. 히트·러트 상호반응</b><em>CYCLE INTERACTION</em></div>
+                    <div className="gm-ph"><b>{labels[0]}</b><p>{data.cycle_interaction.heat}</p></div>
+                    <div className="gm-ph"><b>{labels[1]}</b><p>{data.cycle_interaction.rut}</p></div>
+                    <div className="gm-ph"><b>같이 버티는 방식</b><p>{data.cycle_interaction.together}</p></div>
+                    <div className="gm-ph gm-cf"><b>무너지는 조건</b><p>{data.cycle_interaction.failure}</p></div>
+                  </div>
+                );
+              })()
+            )}
+
             <div className="gm-sec">
-              <div className="gm-num"><b>Ⅳ. 경과 예측</b><em>PROGNOSIS</em></div>
+              <div className="gm-num"><b>{data.cycle_interaction ? "Ⅴ" : "Ⅳ"}. 경과 예측</b><em>PROGNOSIS</em></div>
               <div className="gm-ph"><b>1기 접촉·인지</b><p>{data.prognosis?.phase_1}</p></div>
               <div className="gm-ph"><b>2기 조정</b><p>{data.prognosis?.phase_2}</p></div>
               <div className="gm-ph"><b>3기 장기경과</b><p>{data.prognosis?.phase_3}</p></div>
@@ -1740,7 +1819,7 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
             </div>
 
             <div className="gm-sec">
-              <div className="gm-num"><b>Ⅴ. 담당 감별사 소견</b><em>EXAMINER'S NOTE</em></div>
+              <div className="gm-num"><b>{data.cycle_interaction ? "Ⅵ" : "Ⅴ"}. 담당 감별사 소견</b><em>EXAMINER'S NOTE</em></div>
               <div className="gm-examiner">
                 <p className="gm-serif">{data.examiner_note}</p>
                 <div className="gm-sign">
