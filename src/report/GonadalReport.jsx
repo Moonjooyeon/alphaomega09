@@ -498,6 +498,8 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          reportMode: solo ? "solo" : "pair",
+          phase: "generate",
           contents: [{ role: "user", parts }],
           generationConfig: {
             maxOutputTokens: 4000,

@@ -1,0 +1,45 @@
+services:
+  app:
+    build:
+      context: .
+      args:
+        VITE_GEMINI_ENDPOINT: /api/gemini
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://alphaomega:${POSTGRES_PASSWORD}@db:5432/alphaomega
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_API_BASE: ${GEMINI_API_BASE:-https://generativelanguage.googleapis.com/v1beta}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
+      GEMINI_THINKING_BUDGET: ${GEMINI_THINKING_BUDGET:-2048}
+      GEMINI_COST_LIMIT_KRW: ${GEMINI_COST_LIMIT_KRW:-10000}
+      USD_TO_KRW: ${USD_TO_KRW:-1400}
+      GEMINI_INPUT_USD_PER_MILLION: ${GEMINI_INPUT_USD_PER_MILLION:-0.25}
+      GEMINI_OUTPUT_USD_PER_MILLION: ${GEMINI_OUTPUT_USD_PER_MILLION:-1.5}
+      MAX_REQUEST_BYTES: ${MAX_REQUEST_BYTES:-4500000}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-app_store}
+      PASS_USES_PER_PURCHASE: ${PASS_USES_PER_PURCHASE:-5}
+    ports:
+      - "${HTTP_PORT:-8080}:3000"
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: alphaomega
+      POSTGRES_USER: alphaomega
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alphaomega -d alphaomega"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
