@@ -3,7 +3,7 @@ const config = require("../config");
 const { query } = require("../db");
 const { optionalUser } = require("../services/auth");
 const { callGemini } = require("../services/gemini");
-const { estimateCost, getTokenUsage, readSharedUsage } = require("../services/usage");
+const { estimateCost, getTokenUsage } = require("../services/usage");
 const { hashText, id, jsonError } = require("../utils");
 
 const router = express.Router();
@@ -79,18 +79,6 @@ router.post("/gemini", async (req, res) => {
   }
 
   const keyMode = userApiKey ? "personal" : "shared";
-  if (keyMode === "shared") {
-    const usage = await readSharedUsage();
-    if (usage.costKrw >= config.gemini.costLimitKrw) {
-      res.status(429).json(
-        jsonError(`누적 사용 한도 ${config.gemini.costLimitKrw.toLocaleString("ko-KR")}원을 초과하여 검사를 닫았습니다.`, {
-          usage,
-        })
-      );
-      return;
-    }
-  }
-
   const apiKey = userApiKey || config.gemini.apiKey;
   if (!apiKey) {
     res.status(500).json(jsonError("서버에 GEMINI_API_KEY가 설정되지 않았습니다."));
@@ -122,7 +110,7 @@ router.post("/gemini", async (req, res) => {
     keyMode === "shared"
       ? {
           request: { ...tokens, ...cost },
-          limitKrw: config.gemini.costLimitKrw,
+          limitDisabled: true,
         }
       : { personalKey: true };
   body.sessionId = sessionId;

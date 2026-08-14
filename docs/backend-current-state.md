@@ -26,23 +26,31 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
 
 - Docker Compose 기반 Express/PostgreSQL 백엔드 골격
 - Gemini 서버 프록시
-- 공용 Gemini key 비용 한도/요청 로그
+- 공용 Gemini key 요청 로그
 - 토스 로그인 프론트 버튼
 - Apps in Toss `appLogin()` 인가 코드 수신
 - 서버 mTLS 기반 Toss 토큰 교환/사용자 조회 라우트
 - `app_users` 사용자 upsert
 - 서비스 세션 토큰 발급 및 `/api/me`
 - 로그인된 검사 요청의 `user_id` 로그 연결
+- `GET /api/passes` 이용권 조회
+- `POST /api/passes/consume` 최종 결과 확정 후 이용권 차감
+- `POST /api/purchases/verify` 결제 검증 API 진입점
+- `POST /api/iap/grant-pass` Apps in Toss IAP 이용권 발급
+- Apps in Toss IAP 구매 버튼
+- Apple App Store Server API 거래 검증
+- Google Play Developer API 인앱 상품 검증
+- Apple/Google 검증 성공 후 `access_passes` 자동 발급
+- 로그인 후 잔여 이용권 조회 UI
+- 검사 전 잔여 이용권 확인
+- 결과 JSON 파싱 성공 후 이용권 차감 호출
+- `VITE_PURCHASE_MOCK=true`일 때 테스트 이용권 발급 UI
 - 프론트/백엔드 역할 경계 문서화
 
 미완료:
 
 - 실제 토스 앱/샌드박스에서 로그인 왕복 검증
-- 인앱 결제 상품 조회/구매
-- 결제 영수증 또는 order 검증
-- 결제 성공 후 `access_passes` 발급
-- 잔여 이용권 조회 UI
-- 최종 결과 확정 후 이용권 차감 API
+- 실제 토스인앱 sandbox IAP 결제 E2E 검증
 - 운영 서버 nginx/domain/compose 파일 확정
 
 마지막 로컬 검증:
@@ -57,12 +65,29 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
   - 서버, DB, Gemini 환경 설정 상태 확인
 - `GET /api/usage`
   - 공용 Gemini key 누적 요청/토큰/예상 비용 확인
+- `GET /api/passes`
+  - 로그인 사용자의 이용권 목록과 총 잔여 횟수 확인
+- `POST /api/passes/consume`
+  - 최종 결과 확정 뒤 1회 차감
+  - `chargeKey` 기준 중복 차감 방지
+  - 성공한 검사 세션이 없으면 차감하지 않음
+- `POST /api/iap/grant-pass`
+  - Apps in Toss IAP `orderId` 기준 이용권 발급
+  - 같은 `orderId`는 중복 발급하지 않음
+  - 다른 사용자 재사용은 409로 차단
+- `POST /api/purchases/verify`
+  - Apple/Google 결제 검증
+  - 검증 성공 시 `purchase_orders` 승인 저장과 `access_passes` 발급
+  - Apple 요청: `provider=app_store`, `transactionId`, 선택 `productId`
+  - Google 요청: `provider=play_store`, `productId`, `purchaseToken`, 선택 `packageName`
+  - `PURCHASE_MOCK=true`일 때만 `manual` provider 테스트 발급 가능
 - `POST /api/gemini`
   - Gemini 프록시
   - `userApiKey`가 있으면 개인 key 사용
   - `userApiKey`가 없으면 공용 `GEMINI_API_KEY` 사용
   - 기본 `GEMINI_API_BASE`는 MonoGPT Gemini 라우터다.
-  - 현재는 비용 한도 확인과 요청 로그 저장까지 구현
+  - 현재는 요청 로그 저장까지 구현
+  - 전체 공용 key 예산 제한은 적용하지 않음
   - 이용권 차감은 아직 직접 수행하지 않음
 - `POST /api/toss/login`
   - Apps in Toss `appLogin()`에서 받은 `authorizationCode`, `referrer`를 서버로 전달
@@ -137,12 +162,23 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
 - `GEMINI_API_BASE`
 - `GEMINI_MODEL`
 - `GEMINI_THINKING_BUDGET`
-- `GEMINI_COST_LIMIT_KRW`
 - `GEMINI_INPUT_USD_PER_MILLION`
 - `GEMINI_OUTPUT_USD_PER_MILLION`
 - `USD_TO_KRW`
 - `PAYMENT_PROVIDER`
 - `PASS_USES_PER_PURCHASE`
+- `PURCHASE_MOCK`
+- `APPLE_ENV`
+- `APPLE_BUNDLE_ID`
+- `APPLE_ISSUER_ID`
+- `APPLE_KEY_ID`
+- `APPLE_PRIVATE_KEY`
+- `APPLE_PRIVATE_KEY_PATH`
+- `APPLE_PRODUCT_IDS`
+- `GOOGLE_PACKAGE_NAME`
+- `GOOGLE_SERVICE_ACCOUNT_JSON`
+- `GOOGLE_SERVICE_ACCOUNT_JSON_PATH`
+- `GOOGLE_PRODUCT_IDS`
 - `MAX_REQUEST_BYTES`
 - `HTTP_PORT`
 - `TOSS_API_BASE`
@@ -153,6 +189,8 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
 - `VITE_API_BASE_ENDPOINT`
 - `VITE_GEMINI_ENDPOINT`
 - `VITE_TOSS_LOGIN_MOCK`
+- `VITE_PURCHASE_MOCK`
+- `VITE_TOSS_IAP_SKU`
 
 ## Lessons Baked Into The Design
 
@@ -188,8 +226,5 @@ curl http://127.0.0.1:8080/api/health
 - 로그인 성공 후 `app_users.last_login_at` 갱신 확인
 - `/api/gemini` 요청이 `usage_sessions.user_id`, `gemini_requests.user_id`에 연결되는지 DB 확인
 - 인앱 결제 상품 조회/구매 연결
-- 인앱 결제 영수증 또는 order 검증 API 연결
-- 결제 성공 시 `access_passes` 발급
-- 최종 결과 확정 후 `/passes/consume` 성격의 차감 API 추가
-- 프론트 구매/잔여 횟수 UI 연결
+- 실제 토스인앱 sandbox IAP 결제 E2E 검증
 - 실제 배포 서버 compose 파일과 도메인/nginx 구성 정리

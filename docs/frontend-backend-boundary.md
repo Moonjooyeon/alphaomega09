@@ -20,6 +20,9 @@ Alphaomega를 인앱 결제/이용권 기반 서비스로 옮길 때 프론트�
 - 최종 결과가 화면에 쓸 수 있는 상태인지 판단
 - 최종 결과 확정 후에만 이용권 차감 API 호출
 - 결제 성공 후 잔여 이용권 다시 조회
+- 검사 전 잔여 이용권 확인
+- 최종 결과 확정 후 `/api/passes/consume` 호출
+- `VITE_PURCHASE_MOCK=true`일 때 테스트 이용권 발급 버튼 표시
 
 프론트엔드가 하지 말아야 할 일:
 
@@ -40,7 +43,6 @@ Alphaomega를 인앱 결제/이용권 기반 서비스로 옮길 때 프론트�
 - 개인 key 요청과 공용 key 요청 분기
 - Gemini API 또는 라우터 API 호출
 - Gemini 모델명, API base URL, thinking budget 관리
-- 공용 key 월 사용 비용 한도 확인
 - Gemini 요청/토큰/비용/에러 로그 저장
 - 사용자/세션 식별
 - 인앱 결제 영수증 검증
@@ -110,7 +112,7 @@ Alphaomega를 인앱 결제/이용권 기반 서비스로 옮길 때 프론트�
 
 - Gemini 원본 응답 JSON
 - `sessionId`
-- `usageLimit`
+- `usageLimit`: 현재 요청의 추정 사용량. 전체 공용키 예산 제한은 적용하지 않는다.
 
 주의:
 
@@ -122,7 +124,7 @@ Alphaomega를 인앱 결제/이용권 기반 서비스로 옮길 때 프론트�
 
 프론트가 현재 사용자의 이용권 상태를 조회한다.
 
-응답 초안:
+응답:
 
 - 사용 가능한 이용권 목록
 - 총 잔여 횟수
@@ -132,11 +134,10 @@ Alphaomega를 인앱 결제/이용권 기반 서비스로 옮길 때 프론트�
 
 프론트가 최종 결과 확정 후 1회 차감을 요청한다.
 
-요청 초안:
+요청:
 
 - `sessionId`
 - `chargeKey`
-- `reportMode`
 
 백엔드 규칙:
 
@@ -146,7 +147,7 @@ Alphaomega를 인앱 결제/이용권 기반 서비스로 옮길 때 프론트�
 - `access_passes.used_count`를 증가시킨다.
 - `used_count >= allowed_uses`가 되면 이용권을 사용 완료로 바꾼다.
 
-### Payment Verification API
+### `POST /api/purchases/verify`
 
 인앱 결제 완료 후 프론트가 영수증/거래 정보를 백엔드에 보낸다.
 
@@ -156,6 +157,27 @@ Alphaomega를 인앱 결제/이용권 기반 서비스로 옮길 때 프론트�
 - 검증 성공 시에만 `purchase_orders`를 승인 상태로 저장한다.
 - 승인된 주문에 대해서만 `access_passes`를 발급한다.
 - 같은 제공자 거래 ID는 한 번만 처리한다.
+- Apple은 App Store Server API `Get Transaction Info`로 `transactionId`를 검증한다.
+- Google은 Play Developer API `purchases.products.get`으로 `purchaseToken`을 검증한다.
+- `manual` 테스트 발급은 `PURCHASE_MOCK=true`일 때만 허용한다.
+
+### `POST /api/iap/grant-pass`
+
+Apps in Toss IAP 구매 완료 후 프론트의 `processProductGrant`가 호출한다.
+
+요청:
+
+- `orderId`
+- `sku`
+- `displayName`
+- `displayAmount`
+- `amount`
+
+백엔드 규칙:
+
+- 같은 `orderId`는 중복 발급하지 않는다.
+- 이미 다른 사용자에게 속한 `orderId`면 409로 거부한다.
+- 발급 성공 시 `purchase_orders`와 `access_passes`를 생성한다.
 
 ## Safe Report Flow
 

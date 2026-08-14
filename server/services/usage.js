@@ -35,7 +35,6 @@ async function readSharedUsage() {
     costUsd: Number(row.cost_usd || 0),
     costKrw: Number(row.cost_krw || 0),
   };
-  usage.remainingKrw = Math.max(0, config.gemini.costLimitKrw - usage.costKrw);
   return usage;
 }
 

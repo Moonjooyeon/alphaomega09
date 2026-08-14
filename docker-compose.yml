@@ -6,11 +6,15 @@ services:
         VITE_API_BASE_ENDPOINT: /api
         VITE_GEMINI_ENDPOINT: /api/gemini
         VITE_TOSS_LOGIN_MOCK: ${VITE_TOSS_LOGIN_MOCK:-false}
+        VITE_PURCHASE_MOCK: ${VITE_PURCHASE_MOCK:-false}
+        VITE_TOSS_IAP_SKU: ${VITE_TOSS_IAP_SKU:-}
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - ./secrets/toss:/app/secrets/toss:ro
+      - ./secrets/apple:/app/secrets/apple:ro
+      - ./secrets/google:/app/secrets/google:ro
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -20,13 +24,24 @@ services:
       GEMINI_API_BASE: ${GEMINI_API_BASE:-https://monogpt.kr/api/monorouter/v1/gemini}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
       GEMINI_THINKING_BUDGET: ${GEMINI_THINKING_BUDGET:-2048}
-      GEMINI_COST_LIMIT_KRW: ${GEMINI_COST_LIMIT_KRW:-10000}
       USD_TO_KRW: ${USD_TO_KRW:-1400}
       GEMINI_INPUT_USD_PER_MILLION: ${GEMINI_INPUT_USD_PER_MILLION:-0.25}
       GEMINI_OUTPUT_USD_PER_MILLION: ${GEMINI_OUTPUT_USD_PER_MILLION:-1.5}
       MAX_REQUEST_BYTES: ${MAX_REQUEST_BYTES:-4500000}
       PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-app_store}
       PASS_USES_PER_PURCHASE: ${PASS_USES_PER_PURCHASE:-5}
+      PURCHASE_MOCK: ${PURCHASE_MOCK:-false}
+      APPLE_ENV: ${APPLE_ENV:-sandbox}
+      APPLE_BUNDLE_ID: ${APPLE_BUNDLE_ID:-}
+      APPLE_ISSUER_ID: ${APPLE_ISSUER_ID:-}
+      APPLE_KEY_ID: ${APPLE_KEY_ID:-}
+      APPLE_PRIVATE_KEY: ${APPLE_PRIVATE_KEY:-}
+      APPLE_PRIVATE_KEY_PATH: ${APPLE_PRIVATE_KEY_PATH:-/app/secrets/apple/AuthKey.p8}
+      APPLE_PRODUCT_IDS: ${APPLE_PRODUCT_IDS:-}
+      GOOGLE_PACKAGE_NAME: ${GOOGLE_PACKAGE_NAME:-}
+      GOOGLE_SERVICE_ACCOUNT_JSON: ${GOOGLE_SERVICE_ACCOUNT_JSON:-}
+      GOOGLE_SERVICE_ACCOUNT_JSON_PATH: ${GOOGLE_SERVICE_ACCOUNT_JSON_PATH:-/app/secrets/google/service-account.json}
+      GOOGLE_PRODUCT_IDS: ${GOOGLE_PRODUCT_IDS:-}
       TOSS_API_BASE: ${TOSS_API_BASE:-https://apps-in-toss-api.toss.im}
       TOSS_MTLS_CERT_PATH: ${TOSS_MTLS_CERT_PATH:-/app/secrets/toss/sentiGuide_public.crt}
       TOSS_MTLS_KEY_PATH: ${TOSS_MTLS_KEY_PATH:-/app/secrets/toss/sentiGuide_private.key}

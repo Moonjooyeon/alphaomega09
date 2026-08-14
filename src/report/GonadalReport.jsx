@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { appLogin } from "@apps-in-toss/web-framework";
+import { appLogin, IAP } from "@apps-in-toss/web-framework";
 import { ASSETS } from "./assets.js";
 import { CSS } from "./styles.js";
 import {
@@ -11,9 +11,11 @@ import {
   IMPRINT_OPTS,
   LOADING,
   MODES,
+  PURCHASE_MOCK,
   QUESTIONS,
   ROLE_OPTS,
   SITES,
+  TOSS_IAP_SKU,
   SOLO_QUESTIONS,
   TOSS_LOGIN_MOCK,
 } from "./config.js";
@@ -34,6 +36,27 @@ import { localMockReport } from "./mockReport.js";
    ───────────────────────────────────────────── */
 
 const AUTH_TOKEN_STORAGE = "ao_auth_token";
+
+function makeChargeKey() {
+  try {
+    if (crypto?.randomUUID) return `charge_${crypto.randomUUID()}`;
+  } catch {}
+  return `charge_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
+function pickTossPassProduct(products = []) {
+  if (TOSS_IAP_SKU) {
+    return products.find((product) => product.sku === TOSS_IAP_SKU) || { sku: TOSS_IAP_SKU };
+  }
+  const text = (product) => `${product.displayName || ""} ${product.description || ""} ${product.sku || ""}`;
+  const consumables = products.filter((product) => product.type === "CONSUMABLE");
+  return (
+    consumables.find((product) => /5|검사|이용권|pass/i.test(text(product))) ||
+    consumables[0] ||
+    products.find((product) => /5|검사|이용권|pass/i.test(text(product))) ||
+    products[0]
+  );
+}
 
 function readStoredToken() {
   try {
@@ -267,6 +290,10 @@ export default function GonadalReport() {
   const [authToken, setAuthToken] = useState(readStoredToken);
   const [authUser, setAuthUser] = useState(null);
   const [authBusy, setAuthBusy] = useState(false);
+  const [passInfo, setPassInfo] = useState(null);
+  const [passBusy, setPassBusy] = useState(false);
+  const [passErr, setPassErr] = useState("");
+  const [paymentBusy, setPaymentBusy] = useState(false);
   const [crop, setCrop] = useState(null);
   const [no] = useState(caseNo);
   const sheetRef = useRef(null);
@@ -276,6 +303,7 @@ export default function GonadalReport() {
   const reportRole = data?.subject?.role || subj[0]?.role;
   const reportIsAlpha = reportRole === "알파";
   const isAuthenticated = Boolean(authToken && authUser);
+  const remainingUses = Number(passInfo?.totalRemainingUses || 0);
 
   useEffect(() => {
     if (!authToken) {
@@ -298,6 +326,120 @@ export default function GonadalReport() {
     };
   }, [authToken]);
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setPassInfo(null);
+      setPassErr("");
+      return;
+    }
+    refreshPasses(authToken);
+  }, [authToken, authUser?.id]);
+
+  async function refreshPasses(token = authToken) {
+    if (!token) {
+      setPassInfo(null);
+      return null;
+    }
+    setPassBusy(true);
+    try {
+      const body = await apiFetch("/passes", { token });
+      setPassInfo(body);
+      setPassErr("");
+      return body;
+    } catch (error) {
+      setPassErr(error?.message || "이용권을 조회하지 못했습니다.");
+      return null;
+    } finally {
+      setPassBusy(false);
+    }
+  }
+
+  async function issueMockPass() {
+    if (!authToken) return;
+    setErr("");
+    setPassBusy(true);
+    try {
+      await apiFetch("/purchases/verify", {
+        token: authToken,
+        method: "POST",
+        body: JSON.stringify({
+          provider: "manual",
+          providerOrderId: makeChargeKey().replace("charge_", "manual_order_"),
+          providerTransactionId: makeChargeKey().replace("charge_", "manual_tx_"),
+          productId: "local_test_pass",
+          amountKrw: 0,
+          rawResponse: { source: "frontend_mock" },
+        }),
+      });
+      await refreshPasses(authToken);
+    } catch (error) {
+      setErr(`테스트 이용권 발급에 실패했습니다 — ${error?.message || "서버 설정을 확인해 주십시오."}`);
+    } finally {
+      setPassBusy(false);
+    }
+  }
+
+  async function buyTossPass() {
+    if (!authToken) {
+      setErr("토스 로그인 후 이용권을 구매할 수 있습니다.");
+      return;
+    }
+    setErr("");
+    setPaymentBusy(true);
+    try {
+      const productList = await IAP.getProductItemList();
+      const product = pickTossPassProduct(productList?.products || []);
+      if (!product?.sku) {
+        throw new Error("구매 가능한 이용권 상품을 찾지 못했습니다.");
+      }
+      await new Promise((resolve, reject) => {
+        let cleanup = () => {};
+        cleanup = IAP.createOneTimePurchaseOrder({
+          options: {
+            sku: product.sku,
+            processProductGrant: async ({ orderId }) => {
+              const data = await apiFetch("/iap/grant-pass", {
+                token: authToken,
+                method: "POST",
+                body: JSON.stringify({
+                  orderId,
+                  sku: product.sku,
+                  displayName: product.displayName || "Alphaomega 검사 이용권",
+                  displayAmount: product.displayAmount || "",
+                  amount: product.amount || null,
+                }),
+              });
+              setPassInfo((prev) => ({
+                passes: [data.pass, ...((prev?.passes || []).filter((pass) => pass.id !== data.pass.id))],
+                totalRemainingUses:
+                  Number(data.pass?.remainingUses || 0) +
+                  (prev?.passes || [])
+                    .filter((pass) => pass.id !== data.pass.id)
+                    .reduce((sum, pass) => sum + Number(pass.remainingUses || 0), 0),
+              }));
+              return true;
+            },
+          },
+          onEvent: (event) => {
+            if (event.type === "success") {
+              cleanup();
+              resolve(event.data);
+            }
+          },
+          onError: (error) => {
+            cleanup();
+            reject(error);
+          },
+        });
+      });
+      await refreshPasses(authToken);
+    } catch (error) {
+      setErr(`인앱 결제 처리에 실패했습니다 — ${error?.message || "토스 앱 안에서 다시 시도해 주십시오."}`);
+    } finally {
+      setPaymentBusy(false);
+    }
+  }
+
   async function submitTossLogin() {
     setErr("");
     setAuthBusy(true);
@@ -316,6 +458,7 @@ export default function GonadalReport() {
       setAuthToken(body.token);
       saveStoredToken(body.token);
       setAuthUser(body.user || null);
+      refreshPasses(body.token);
     } catch (error) {
       setErr(`토스 로그인에 실패했습니다 — ${error?.message || "토스 앱 안에서 다시 시도해 주십시오."}`);
     } finally {
@@ -327,6 +470,8 @@ export default function GonadalReport() {
     setAuthToken("");
     saveStoredToken("");
     setAuthUser(null);
+    setPassInfo(null);
+    setPassErr("");
   }
 
   const set = (i, k, v) =>
@@ -449,6 +594,11 @@ export default function GonadalReport() {
     }
     if (!isAuthenticated) {
       setErr("토스 로그인 후 검사를 접수할 수 있습니다.");
+      return;
+    }
+    const passes = await refreshPasses(authToken);
+    if (!passes || Number(passes.totalRemainingUses || 0) < 1) {
+      setErr(PURCHASE_MOCK ? "사용 가능한 이용권이 없습니다. 테스트 이용권을 먼저 발급해 주십시오." : "사용 가능한 이용권이 없습니다.");
       return;
     }
     setStage("running");
@@ -596,6 +746,7 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
     };
 
     try {
+      const chargeKey = makeChargeKey();
       const res = await fetch(GEMINI_PROXY_ENDPOINT, {
         method: "POST",
         headers: {
@@ -662,6 +813,21 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
 
       if (solo ? !parsed.subject : !parsed.subjects || !parsed.cross_reaction) {
         return fail("결과에 필수 항목이 빠져 있습니다. 다시 접수해 주십시오.");
+      }
+
+      if (!j.sessionId) {
+        return fail("검사 세션이 확인되지 않아 이용권을 차감할 수 없습니다.");
+      }
+
+      try {
+        await apiFetch("/passes/consume", {
+          token: authToken,
+          method: "POST",
+          body: JSON.stringify({ sessionId: j.sessionId, chargeKey }),
+        });
+        await refreshPasses(authToken);
+      } catch (error) {
+        return fail(`이용권 차감에 실패했습니다 — ${error?.message || "잔여 횟수를 확인해 주십시오."}`);
       }
 
       setData(parsed);
@@ -891,11 +1057,31 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
                     ? `${authUser.displayName || "토스 사용자"} 계정으로 접수 기록이 저장됩니다.`
                     : "검사 접수 전 토스 로그인이 필요합니다."}
                 </p>
+                {isAuthenticated && (
+                  <p className="gm-pass-msg">
+                    {passBusy
+                      ? "이용권 확인 중"
+                      : passErr
+                      ? `이용권 조회 실패 — ${passErr}`
+                      : `잔여 검사 ${remainingUses}회`}
+                  </p>
+                )}
               </div>
               <div className="gm-auth-actions">
                 {isAuthenticated ? (
                   <>
                     <span className="gm-auth-pill">로그인 완료</span>
+                    <button className="gm-gate-btn" type="button" disabled={passBusy} onClick={() => refreshPasses(authToken)}>
+                      이용권 새로고침
+                    </button>
+                    <button className="gm-gate-btn" type="button" disabled={paymentBusy} onClick={buyTossPass}>
+                      {paymentBusy ? "결제 중" : "이용권 구매"}
+                    </button>
+                    {PURCHASE_MOCK && (
+                      <button className="gm-gate-btn" type="button" disabled={passBusy} onClick={issueMockPass}>
+                        테스트 이용권
+                      </button>
+                    )}
                     <button className="gm-gate-btn" type="button" onClick={logout}>
                       로그아웃
                     </button>
@@ -916,7 +1102,9 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
               <p className="gm-note">
                 {missing.length
                   ? `미기재: ${missing.join(" · ")}`
-                  : "기재 완료. 접수 후 결과 확정까지 약 20초가 소요됩니다."}
+                  : isAuthenticated
+                  ? `기재 완료. 현재 잔여 검사 ${remainingUses}회. 결과 확정 후 1회 차감됩니다.`
+                  : "기재 완료. 접수 전 로그인이 필요합니다."}
               </p>
             </div>
           </>

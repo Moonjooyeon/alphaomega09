@@ -250,6 +250,7 @@ export const CSS = `
 .gm-auth{display:flex;align-items:center;justify-content:space-between;gap:18px;}
 .gm-auth .gm-num{margin-bottom:8px;}
 .gm-auth-msg{margin:0;font-size:12.5px;line-height:1.8;color:var(--ink2);}
+.gm-pass-msg{margin:7px 0 0;font-size:12px;line-height:1.7;color:var(--assay);}
 .gm-auth-actions{display:flex;align-items:center;gap:10px;flex:0 0 auto;}
 .gm-auth-pill{border:1px solid var(--assay);color:var(--assay);padding:8px 12px;
     font-size:10px;letter-spacing:.18em;white-space:nowrap;}

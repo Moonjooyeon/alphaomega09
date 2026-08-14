@@ -5,6 +5,9 @@ const { migrate } = require("./db");
 const authRoutes = require("./routes/auth");
 const geminiRoutes = require("./routes/gemini");
 const healthRoutes = require("./routes/health");
+const iapRoutes = require("./routes/iap");
+const passesRoutes = require("./routes/passes");
+const purchasesRoutes = require("./routes/purchases");
 const usageRoutes = require("./routes/usage");
 const { jsonError } = require("./utils");
 
@@ -15,6 +18,9 @@ app.use(express.json({ limit: `${Math.ceil(config.maxRequestBytes / 1024)}kb` })
 
 app.use("/api", healthRoutes);
 app.use("/api", authRoutes);
+app.use("/api", iapRoutes);
+app.use("/api", passesRoutes);
+app.use("/api", purchasesRoutes);
 app.use("/api", usageRoutes);
 app.use("/api", geminiRoutes);
 
