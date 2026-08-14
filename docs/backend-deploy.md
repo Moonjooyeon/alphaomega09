@@ -9,6 +9,7 @@ Docker Compose 기준 백엔드 배포 메모.
 
 ## API
 
+- `GET /health`: 외부 도메인/로드밸런서 확인용 공개 헬스체크
 - `GET /api/health`: 서버/DB/Gemini 환경 확인
 - `GET /api/usage`: 공용 Gemini key 누적 사용량 확인
 - `GET /api/passes`: 로그인 사용자의 이용권 목록/잔여 횟수 확인
@@ -33,7 +34,7 @@ cp .env.example .env
 # Apple: ./secrets/apple/AuthKey.p8
 # Google: ./secrets/google/service-account.json
 docker compose up -d --build
-curl http://127.0.0.1:8080/api/health
+curl http://127.0.0.1:8080/health
 ```
 
 ## 운영 환경변수

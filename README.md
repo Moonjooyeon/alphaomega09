@@ -15,6 +15,7 @@
 - PostgreSQL 마이그레이션 추가
 - Dockerfile / `docker-compose.yml` 추가
 - `/api/health` 서버 상태 확인
+- `/health` 공개 서버 상태 확인
 - `/api/gemini` 서버 프록시
 - MonoGPT Gemini 라우터 기본 설정
 - Gemini 요청별 로그, 토큰, 예상 비용 저장
@@ -49,7 +50,7 @@
 cp .env.example .env
 # .env에 운영 또는 로컬 테스트 값을 입력
 docker compose up -d --build
-curl http://127.0.0.1:8080/api/health
+curl http://127.0.0.1:8080/health
 ```
 
 로컬 프론트 개발 서버만 볼 때:
@@ -124,6 +125,7 @@ npm run build
 
 | API | 설명 |
 | --- | --- |
+| `GET /health` | 외부 도메인/로드밸런서 확인용 공개 헬스체크 |
 | `GET /api/health` | 서버, DB, Gemini 설정 상태 확인 |
 | `POST /api/toss/login` | Toss 로그인 인가 코드 교환 및 서비스 세션 발급 |
 | `GET /api/me` | 현재 로그인 사용자 확인 |

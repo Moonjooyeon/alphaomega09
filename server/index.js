@@ -16,6 +16,7 @@ const app = express();
 app.set("trust proxy", true);
 app.use(express.json({ limit: `${Math.ceil(config.maxRequestBytes / 1024)}kb` }));
 
+app.use("/", healthRoutes);
 app.use("/api", healthRoutes);
 app.use("/api", authRoutes);
 app.use("/api", iapRoutes);

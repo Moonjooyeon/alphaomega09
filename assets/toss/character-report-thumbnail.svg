@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
+  <rect width="600" height="600" fill="#F2F4EC"/>
+  <rect x="36" y="36" width="528" height="528" rx="56" fill="#FCFCF8" stroke="#BFCBBB" stroke-width="6"/>
+  <line x1="92" y1="150" x2="508" y2="150" stroke="#D9DED3" stroke-width="4"/>
+  <line x1="92" y1="450" x2="508" y2="450" stroke="#D9DED3" stroke-width="4"/>
+  <path d="M300 116v44M300 272v44M184 216h44M372 216h44" stroke="#161A15" stroke-width="12" stroke-linecap="square"/>
+  <circle cx="300" cy="216" r="86" fill="none" stroke="#161A15" stroke-width="12"/>
+  <circle cx="300" cy="216" r="48" fill="none" stroke="#314E43" stroke-width="8"/>
+  <circle cx="300" cy="216" r="17" fill="#9B303A"/>
+  <text x="300" y="365" text-anchor="middle" font-family="Apple SD Gothic Neo, Pretendard, Noto Sans KR, Arial, sans-serif" font-size="58" font-weight="800" fill="#161A15">캐릭터 리포트</text>
+  <text x="300" y="415" text-anchor="middle" font-family="Apple SD Gothic Neo, Pretendard, Noto Sans KR, Arial, sans-serif" font-size="24" font-weight="700" fill="#314E43">CHARACTER REPORT</text>
+  <text x="300" y="488" text-anchor="middle" font-family="Apple SD Gothic Neo, Pretendard, Noto Sans KR, Arial, sans-serif" font-size="22" font-weight="600" fill="#6E776B">창작 캐릭터 감별 결과지</text>
+</svg>

@@ -24,7 +24,7 @@ Alphaomega는 기존 프론트 단독 Gemini 호출 구조에서, Docker Compose
 
 - Docker Compose로 프론트/백엔드/DB가 한 번에 뜨는 상태
 - `.env.example`만 보고 운영 `.env`를 채울 수 있는 상태
-- `/api/health`로 서버/DB/Gemini 설정을 확인할 수 있는 상태
+- `/health` 또는 `/api/health`로 서버/DB/Gemini 설정을 확인할 수 있는 상태
 - 로그인 사용자가 DB에 저장되는 상태
 - 인앱 결제 검증 후 이용권이 발급되는 상태
 - 검사 최종 결과 확정 뒤에만 이용권이 1회 차감되는 상태
@@ -38,7 +38,7 @@ Alphaomega는 기존 프론트 단독 Gemini 호출 구조에서, Docker Compose
 - SSL 인증서 또는 nginx/프록시 설정
 - 운영 `.env` 실제 값 주입
 - 운영 서버에서 `docker compose up -d --build` 실행
-- 배포 후 `/api/health`와 실제 앱 접속 확인
+- 배포 후 `/health`, `/api/health`, 실제 앱 접속 확인
 
 ## 진행 현황
 
@@ -51,6 +51,7 @@ Alphaomega는 기존 프론트 단독 Gemini 호출 구조에서, Docker Compose
 - PostgreSQL 마이그레이션 추가
 - Dockerfile / `docker-compose.yml` 추가
 - `/api/health`
+- `/health`
 - `/api/gemini` 서버 프록시
 - MonoGPT Gemini 라우터 연동 기본값 반영
 - Gemini 요청별 토큰/비용/에러 로그 저장
@@ -154,6 +155,7 @@ Alphaomega는 기존 프론트 단독 Gemini 호출 구조에서, Docker Compose
 
 | API | 상태 | 설명 |
 | --- | --- | --- |
+| `GET /health` | 구현 | 외부 도메인/로드밸런서 확인용 공개 헬스체크 |
 | `GET /api/health` | 구현 | 서버, DB, Gemini key 설정 상태 확인 |
 | `POST /api/toss/login` | 구현 | Apps in Toss 인가 코드를 백엔드에서 토큰/사용자 정보로 교환 |
 | `GET /api/me` | 구현 | 서비스 세션 토큰으로 현재 사용자 복구 |
@@ -297,7 +299,7 @@ Alphaomega는 기존 프론트 단독 Gemini 호출 구조에서, Docker Compose
 cp .env.example .env
 # .env에 운영값 입력
 docker compose up -d --build
-curl http://127.0.0.1:8080/api/health
+curl http://127.0.0.1:8080/health
 ```
 
 운영 서버에서는 추후 회사 도메인, nginx/SSL, 컨테이너 이름, volume, secret 경로를 서버 환경에 맞춰 확정해야 합니다.
