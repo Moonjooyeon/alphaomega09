@@ -1,3 +1,8 @@
+FROM postgres:16-alpine AS db-init
+COPY scripts/init_production_database.sh /usr/local/bin/init_production_database
+RUN chmod 0755 /usr/local/bin/init_production_database
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/init_production_database"]
+
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./

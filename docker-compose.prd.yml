@@ -3,20 +3,19 @@ name: alphaomega
 services:
   # db 별도 생성 없이 lightsail 별로 하나의 db 사용하도록
   db-init:
-    image: postgres:16-alpine
+    build:
+      context: .
+      target: db-init
     restart: "no"
     networks:
       - levelup-net
     environment:
       POSTGRES_ADMIN_URL: ${POSTGRES_ADMIN_URL:?POSTGRES_ADMIN_URL is required}
       POSTGRES_URL: ${POSTGRES_URL:?POSTGRES_URL is required}
-    volumes:
-      - ./scripts/init_production_database.sh:/usr/local/bin/init_production_database:ro
-    entrypoint: ["/bin/sh", "/usr/local/bin/init_production_database"]
-
   app:
     build:
       context: .
+      target: runtime
       args:
         VITE_API_BASE_ENDPOINT: /api
         VITE_GEMINI_ENDPOINT: /api/gemini
@@ -25,7 +24,9 @@ services:
         VITE_TOSS_IAP_SKU: ${VITE_TOSS_IAP_SKU:-}
     depends_on:
       db-init:
-        condition: service_healthy
+        condition: service_completed_successfully
+    networks:
+      - levelup-net
     volumes:
       - ./secrets/toss:/app/secrets/toss:ro
       - ./secrets/apple:/app/secrets/apple:ro
@@ -33,7 +34,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      DATABASE_URL: postgresql://alphaomega:${POSTGRES_PASSWORD}@db:5432/alphaomega
+      DATABASE_URL: ${POSTGRES_URL:?POSTGRES_URL is required}
       SESSION_SECRET: ${SESSION_SECRET}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_API_BASE: ${GEMINI_API_BASE:-https://monogpt.kr/api/monorouter/v1/gemini}

@@ -5,9 +5,9 @@ set -eu
 : "${POSTGRES_URL:?POSTGRES_URL is required}"
 
 case "$POSTGRES_URL" in
-  postgresql://sentiguide:*@db:5432/sentiguide) ;;
+  postgresql://alphaomega:*@db:5432/alphaomega) ;;
   *)
-    echo "POSTGRES_URL must target postgresql://sentiguide:<password>@db:5432/sentiguide" >&2
+    echo "POSTGRES_URL must target postgresql://alphaomega:<password>@db:5432/alphaomega" >&2
     exit 1
     ;;
 esac
@@ -18,7 +18,7 @@ app_password="${credentials#*:}"
 
 case "$app_password" in
   *[!0-9a-fA-F]*|'')
-    echo "The generated SentiGuide database password must be hexadecimal" >&2
+    echo "The generated Alphaomega database password must be hexadecimal" >&2
     exit 1
     ;;
 esac
@@ -34,13 +34,13 @@ until pg_isready --dbname="$POSTGRES_ADMIN_URL" >/dev/null 2>&1; do
 done
 
 psql "$POSTGRES_ADMIN_URL" --set=ON_ERROR_STOP=1 --set=app_password="$app_password" <<'SQL'
-select format('create role sentiguide login password %L', :'app_password')
-where not exists (select 1 from pg_roles where rolname = 'sentiguide') \gexec
+select format('create role alphaomega login password %L', :'app_password')
+where not exists (select 1 from pg_roles where rolname = 'alphaomega') \gexec
 
-select format('alter role sentiguide login password %L', :'app_password') \gexec
+select format('alter role alphaomega login password %L', :'app_password') \gexec
 
-select 'create database sentiguide owner sentiguide'
-where not exists (select 1 from pg_database where datname = 'sentiguide') \gexec
+select 'create database alphaomega owner alphaomega'
+where not exists (select 1 from pg_database where datname = 'alphaomega') \gexec
 SQL
 
 psql "$POSTGRES_URL" --set=ON_ERROR_STOP=1 --command='select 1' >/dev/null

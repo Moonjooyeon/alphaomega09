@@ -5,7 +5,7 @@ set -eu
 
 backup_dir="${BACKUP_DIR:-/backups}"
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
-backup_path="${backup_dir}/sentiguide-${timestamp}.dump"
+backup_path="${backup_dir}/alphaomega-${timestamp}.dump"
 
 mkdir -p "$backup_dir"
 umask 077
