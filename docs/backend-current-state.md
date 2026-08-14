@@ -6,6 +6,7 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
 
 - 배포 기준은 Netlify Functions가 아니라 Docker Compose 기반 서버 배포다.
 - 프론트는 `/api/gemini`만 호출하고, Gemini key는 백엔드 환경변수에만 둔다.
+- 운영 Gemini key는 MonoGPT Gemini 라우터 key를 쓴다.
 - 결제 제공자는 특정 서비스명으로 고정하지 않는다.
 - Apple/Google 같은 인앱 결제 제공자는 `purchase_orders.provider` 값으로만 구분한다.
 - 이용권은 결제 성공 후 발급되고, 검사 최종 결과가 완성된 뒤에만 차감한다.
@@ -60,6 +61,7 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
   - Gemini 프록시
   - `userApiKey`가 있으면 개인 key 사용
   - `userApiKey`가 없으면 공용 `GEMINI_API_KEY` 사용
+  - 기본 `GEMINI_API_BASE`는 MonoGPT Gemini 라우터다.
   - 현재는 비용 한도 확인과 요청 로그 저장까지 구현
   - 이용권 차감은 아직 직접 수행하지 않음
 - `POST /api/toss/login`
@@ -162,6 +164,7 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
 - 마지막 1회권은 중간 호출에서 먼저 차감하지 않는다.
 - `charge_key`를 저장해 재시도/중복 클릭/네트워크 재전송의 중복 차감을 막는다.
 - 모델 폐기, 신규 사용자 제한, 라우터 endpoint 차이를 대비해 `GEMINI_MODEL`과 `GEMINI_API_BASE`를 환경변수로 둔다.
+- MonoGPT Gemini 라우터는 `https://monogpt.kr/api/monorouter/v1/gemini/v1beta/models/{model}:generateContent` 형태로 호출한다.
 - 응답 길이 초과는 차감 실패와 분리해서 다룬다.
 
 ## Deployment Checklist

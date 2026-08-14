@@ -1,25 +1,56 @@
 const config = require("../config");
 
-async function callGemini({ apiKey, contents, generationConfig }) {
+function geminiEndpointForModel(model) {
   const apiBase = config.gemini.apiBase.replace(/\/+$/, "");
+  if (apiBase.includes("monorouter/v1")) {
+    return `${apiBase}/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  }
+  if (apiBase.includes("{model}")) {
+    return apiBase.replace("{model}", encodeURIComponent(model));
+  }
+  if (apiBase.endsWith(":generateContent")) {
+    return apiBase;
+  }
+  return `${apiBase}/models/${encodeURIComponent(model)}:generateContent`;
+}
+
+function geminiHeaders(apiKey) {
+  const headers = {
+    "Content-Type": "application/json",
+    "x-goog-api-key": apiKey,
+  };
+  if (config.gemini.apiBase.includes("monorouter/v1")) {
+    headers.Authorization = `Bearer ${apiKey}`;
+  }
+  return headers;
+}
+
+function geminiBody({ contents, generationConfig }) {
+  const body = {
+    contents,
+    generationConfig: { ...(generationConfig || {}) },
+  };
+
+  if (config.gemini.apiBase.includes("monorouter/v1")) {
+    body.model = config.gemini.model;
+    delete body.generationConfig.thinkingConfig;
+    return body;
+  }
+
+  body.generationConfig.thinkingConfig = {
+    thinkingBudget: config.gemini.thinkingBudget,
+    ...(generationConfig?.thinkingConfig || {}),
+  };
+  return body;
+}
+
+async function callGemini({ apiKey, contents, generationConfig }) {
   const response = await fetch(
-    `${apiBase}/models/${config.gemini.model}:generateContent`,
+    geminiEndpointForModel(config.gemini.model),
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        contents,
-        generationConfig: {
-          ...(generationConfig || {}),
-          thinkingConfig: {
-            thinkingBudget: config.gemini.thinkingBudget,
-            ...(generationConfig?.thinkingConfig || {}),
-          },
-        },
-      }),
+      headers: geminiHeaders(apiKey),
+      body: JSON.stringify(geminiBody({ contents, generationConfig })),
     }
   );
 
@@ -33,4 +64,4 @@ async function callGemini({ apiKey, contents, generationConfig }) {
   return { response, body };
 }
 
-module.exports = { callGemini };
+module.exports = { callGemini, geminiEndpointForModel };

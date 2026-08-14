@@ -17,7 +17,7 @@ services:
       DATABASE_URL: postgresql://alphaomega:${POSTGRES_PASSWORD}@db:5432/alphaomega
       SESSION_SECRET: ${SESSION_SECRET}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
-      GEMINI_API_BASE: ${GEMINI_API_BASE:-https://generativelanguage.googleapis.com/v1beta}
+      GEMINI_API_BASE: ${GEMINI_API_BASE:-https://monogpt.kr/api/monorouter/v1/gemini}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
       GEMINI_THINKING_BUDGET: ${GEMINI_THINKING_BUDGET:-2048}
       GEMINI_COST_LIMIT_KRW: ${GEMINI_COST_LIMIT_KRW:-10000}

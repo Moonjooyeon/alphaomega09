@@ -21,6 +21,7 @@
 ## AI Router
 
 - Gemini 네이티브 API와 라우터 API는 endpoint 형식이 다를 수 있다. `GEMINI_API_BASE`를 도입할 때는 호출 경로를 함께 검증한다.
+- MonoGPT Gemini 라우터 key는 Google 기본 endpoint가 아니라 `https://monogpt.kr/api/monorouter/v1/gemini`를 base로 써야 한다.
 - 401은 키 오입력/비활성, 403은 라우터 인증/차단, 404는 endpoint/model 불일치 가능성을 먼저 본다.
 - 모델 폐기 또는 신규 사용자 제한이 생길 수 있으므로 모델명은 환경변수로 두고 서버에서 fallback을 둘 수 있게 한다.
 - 응답 길이 초과는 결제 차감 문제가 아니라 프롬프트/토큰/재요청 UX 문제로 분리해 다룬다.

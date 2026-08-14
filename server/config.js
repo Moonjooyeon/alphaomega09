@@ -1,3 +1,4 @@
+const DEFAULT_GEMINI_API_BASE = "https://monogpt.kr/api/monorouter/v1/gemini";
 const requestedModel = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
 
 function numberFromEnv(name, fallback) {
@@ -11,7 +12,7 @@ module.exports = {
   sessionSecret: process.env.SESSION_SECRET || "local-dev-session-secret",
   gemini: {
     model: requestedModel === "gemini-2.5-flash-lite" ? "gemini-3.1-flash-lite" : requestedModel,
-    apiBase: process.env.GEMINI_API_BASE || "https://generativelanguage.googleapis.com/v1beta",
+    apiBase: process.env.GEMINI_API_BASE || DEFAULT_GEMINI_API_BASE,
     apiKey: process.env.GEMINI_API_KEY || "",
     thinkingBudget: numberFromEnv("GEMINI_THINKING_BUDGET", 2048),
     costLimitKrw: numberFromEnv("GEMINI_COST_LIMIT_KRW", 10000),

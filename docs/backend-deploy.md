@@ -16,6 +16,7 @@ Docker Compose 기준 백엔드 배포 메모.
 - `GET /api/me`: 현재 로그인 사용자 확인
 
 `POST /api/gemini`은 요청 본문에 `userApiKey`가 있으면 개인 key를 쓰고, 없으면 서버 환경변수 `GEMINI_API_KEY`를 사용한다.
+운영 `GEMINI_API_KEY`는 MonoGPT Gemini 라우터 key를 기준으로 둔다.
 현재 구현은 공용 key 비용 한도와 요청 로그를 먼저 연결해둔 상태이며, 인앱 결제/이용권 차감은 다음 단계에서 켠다.
 로그인된 요청은 `Authorization: Bearer <token>` 헤더로 `usage_sessions`, `gemini_requests`에 `user_id`를 연결한다.
 
@@ -57,6 +58,7 @@ curl http://127.0.0.1:8080/api/health
 - 로그인된 검사 요청은 `usage_sessions`, `gemini_requests`에 `user_id`를 저장.
 - 실제 토스 앱/샌드박스 + mTLS 인증서 환경에서의 왕복 검증은 아직 필요.
 - 결제/이용권 발급/차감은 아직 미연결.
+- 기본 `GEMINI_API_BASE`는 `https://monogpt.kr/api/monorouter/v1/gemini`.
 
 ## 운영 실수 방지
 
