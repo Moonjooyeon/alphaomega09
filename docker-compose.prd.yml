@@ -33,7 +33,7 @@ services:
       - ./secrets/google:/app/secrets/google:ro
     environment:
       NODE_ENV: production
-      PORT: 3000
+      PORT: 9090
       DATABASE_URL: ${POSTGRES_URL:?POSTGRES_URL is required}
       SESSION_SECRET: ${SESSION_SECRET}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
@@ -64,7 +64,7 @@ services:
       TOSS_MTLS_KEY_PASSWORD: ${TOSS_MTLS_KEY_PASSWORD:-}
       TOSS_LOGIN_MOCK: ${TOSS_LOGIN_MOCK:-false}
     ports:
-      - "${HTTP_PORT:-8080}:3000"
+      - "${HTTP_PORT:-9090}:9090"
     restart: unless-stopped
 
 # 해당 부분 동일 lightsail 내에시 통일

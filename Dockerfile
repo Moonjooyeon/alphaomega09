@@ -30,5 +30,5 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 COPY server ./server
 COPY --from=build /app/dist ./dist
-EXPOSE 3000
+EXPOSE 9090
 CMD ["node", "server/index.js"]
