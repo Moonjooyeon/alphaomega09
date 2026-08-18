@@ -65,7 +65,7 @@ Alphaomega는 기존 프론트 단독 Gemini 호출 구조에서, Docker Compose
 - `chargeKey` 기반 중복 차감 방지
 - `POST /api/purchases/verify` 결제 검증 API 진입점
 - Apps in Toss IAP 구매 버튼
-- `POST /api/iap/grant-pass` Apps in Toss IAP 이용권 발급
+- `POST /api/iap/grant-pass` Apps in Toss IAP 이용권 11회 발급
 - Apple/Google 직접 서버 검증 보조 경로
 - Apps in Toss IAP 또는 Apple/Google 검증 성공 후 이용권 자동 발급
 - 로그인 후 잔여 이용권 조회 UI
@@ -193,6 +193,7 @@ Alphaomega는 기존 프론트 단독 Gemini 호출 구조에서, Docker Compose
 
 - `GEMINI_API_BASE=https://monogpt.kr/api/monorouter/v1/gemini`
 - `GEMINI_MODEL=gemini-3.1-flash-lite`
+- `PASS_USES_PER_PURCHASE=11`
 - MonoGPT 라우터 호출 형태:
   - `https://monogpt.kr/api/monorouter/v1/gemini/v1beta/models/{model}:generateContent`
 - MonoGPT 라우터 사용 시 `Authorization: Bearer <GEMINI_API_KEY>` 헤더를 함께 보냅니다.

@@ -36,7 +36,7 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
 - `GET /api/passes` 이용권 조회
 - `POST /api/passes/consume` 최종 결과 확정 후 이용권 차감
 - `POST /api/purchases/verify` 결제 검증 API 진입점
-- `POST /api/iap/grant-pass` Apps in Toss IAP 이용권 발급
+- `POST /api/iap/grant-pass` Apps in Toss IAP 이용권 11회 발급
 - Apps in Toss IAP 구매 버튼
 - Apple App Store Server API 거래 검증
 - Google Play Developer API 인앱 상품 검증
@@ -73,6 +73,7 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
   - 성공한 검사 세션이 없으면 차감하지 않음
 - `POST /api/iap/grant-pass`
   - Apps in Toss IAP `orderId` 기준 이용권 발급
+  - 기본 발급 횟수는 `PASS_USES_PER_PURCHASE=11`
   - 같은 `orderId`는 중복 발급하지 않음
   - 다른 사용자 재사용은 409로 차단
 - `POST /api/purchases/verify`
@@ -191,6 +192,11 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
 - `VITE_TOSS_LOGIN_MOCK`
 - `VITE_PURCHASE_MOCK`
 - `VITE_TOSS_IAP_SKU`
+
+주의:
+
+- 운영 서버 `.env.prod`에 `PASS_USES_PER_PURCHASE=11`이 들어 있어야 결제 1건당 11회권으로 발급된다.
+- Toss mTLS 파일은 `secrets/toss/alpha_public.crt`, `secrets/toss/alpha_private.key` 이름으로 맞춘다.
 
 ## Lessons Baked Into The Design
 

@@ -28,7 +28,7 @@ module.exports = {
   },
   billing: {
     paymentProvider: process.env.PAYMENT_PROVIDER || "app_store",
-    passUsesPerPurchase: numberFromEnv("PASS_USES_PER_PURCHASE", 5),
+    passUsesPerPurchase: numberFromEnv("PASS_USES_PER_PURCHASE", 11),
     purchaseMock: String(process.env.PURCHASE_MOCK || "").toLowerCase() === "true",
   },
   appStore: {

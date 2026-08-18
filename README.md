@@ -27,7 +27,7 @@
 - `POST /api/passes/consume` 최종 결과 확정 후 1회 차감
 - `chargeKey` 기반 중복 차감 방지
 - Apps in Toss IAP 구매 버튼
-- `POST /api/iap/grant-pass` Apps in Toss IAP 이용권 발급
+- `POST /api/iap/grant-pass` Apps in Toss IAP 이용권 11회 발급
 - Apple/Google 인앱 결제 직접 검증 보조 경로
 - `POST /api/purchases/verify` 결제 검증 API
 - 테스트 모드에서 mock 이용권 발급
@@ -105,6 +105,8 @@ npm run build:ait
 - `secrets/`는 git ignore 처리되어 있습니다.
 - 운영 Gemini key는 MonoGPT의 Gemini 라우터 key를 기준으로 둡니다.
 - 공용 key 전체 예산 제한 변수는 현재 사용하지 않습니다.
+- 운영 11회권은 `PASS_USES_PER_PURCHASE=11` 기준입니다. 서버 `.env.prod`에도 같은 값을 넣어야 합니다.
+- Toss mTLS 인증서 경로는 alpha 기준으로 `alpha_public.crt`, `alpha_private.key`를 사용합니다.
 
 ## 구성
 
@@ -140,7 +142,7 @@ npm run build:ait
 | `GET /api/usage` | 공용 key 누적 사용량/예상 비용 조회 |
 | `GET /api/passes` | 로그인 사용자의 잔여 이용권 조회 |
 | `POST /api/passes/consume` | 최종 결과 확정 후 이용권 1회 차감 |
-| `POST /api/iap/grant-pass` | Apps in Toss IAP `orderId` 기준 이용권 발급 |
+| `POST /api/iap/grant-pass` | Apps in Toss IAP `orderId` 기준 11회권 발급 |
 | `POST /api/purchases/verify` | Apple/Google 인앱 거래 검증 후 이용권 발급 |
 
 ## 운영 인수인계 기준
