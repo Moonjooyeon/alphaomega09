@@ -1,7 +1,7 @@
 import { defineConfig } from "@apps-in-toss/web-framework/config";
 
 export default defineConfig({
-  appName: "alpha",
+  appName: "aoreport",
   brand: {
     primaryColor: "#203f35",
   },
