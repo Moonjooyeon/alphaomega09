@@ -1,6 +1,8 @@
 {
   "scripts": {
-    "build": "vite build",
+    "build": "npm run build:web && npm run build:ait",
+    "build:web": "vite build",
+    "build:ait": "ait build",
     "dev": "node dev-server.mjs",
     "server": "node server/index.js",
     "vite": "vite --host 127.0.0.1"

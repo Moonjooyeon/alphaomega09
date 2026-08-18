@@ -2,5 +2,6 @@ node_modules/
 .env
 .netlify/
 dist/
+*.ait
 secrets/
 .swift-module-cache/

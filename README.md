@@ -65,6 +65,13 @@ npm run dev
 npm run build
 ```
 
+Apps in Toss 업로드용 AIT 생성:
+
+```bash
+npm run build
+# 프로젝트 루트에 alpha.ait 생성
+```
+
 ## 주요 환경변수
 
 서버 운영에 필요한 핵심 값:

@@ -1,5 +1,6 @@
 node_modules
 dist
+*.ait
 .git
 .env
 .netlify
