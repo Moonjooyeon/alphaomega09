@@ -14,6 +14,16 @@ const { jsonError } = require("./utils");
 const app = express();
 
 app.set("trust proxy", true);
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
 app.use(express.json({ limit: `${Math.ceil(config.maxRequestBytes / 1024)}kb` }));
 
 app.use("/", healthRoutes);
