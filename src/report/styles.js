@@ -1,3 +1,5 @@
+import { ASSETS } from "./assets.js";
+
 export const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
