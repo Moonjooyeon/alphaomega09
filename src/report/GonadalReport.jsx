@@ -625,6 +625,16 @@ export default function GonadalReport() {
 - 모든 숫자는 서로 맞아야 한다. compatibility, scent_sync, stability, metrics는 같은 이야기 안에서 같은 방향을 가리켜야 한다.
 - 한국어 문장은 짧게 쓴다. 한 문장에 판단을 두 개 이상 겹치지 않는다.
 
+[Flash-Lite 보정 규칙]
+- 가벼운 모델일수록 일반론으로 도망가므로, 모든 긴 서술 필드는 반드시 "트리거 → 겉으로 보이는 반응 → 숨긴 욕구/후유증"의 3단계를 내부적으로 만든 뒤 1~2문장으로 압축한다.
+- 각 대상은 서로 다른 결핍과 방어 방식을 가져야 한다. 둘 다 같은 말투, 같은 향, 같은 반응을 보이면 실패다.
+- 페어 결과는 A와 B를 따로 판정한 뒤 마지막에 관계성을 합친다. 처음부터 알파×오메가 구도로 몰지 마라.
+- 같은 판정 페어는 오히려 더 오타쿠적으로 쓴다. 알파×알파는 주도권 충돌, 발신향 경쟁, 먼저 물러나는 척하는 쪽을 드러낸다. 오메가×오메가는 안정 구역 침범, 둥지 형성/거부/실패의 차이, 서로의 물건을 숨기는 반응을 드러낸다.
+- 단일 개체 결과는 "이 캐릭터를 굴릴 때 바로 써먹을 설정 카드"처럼 보여야 한다. 주기, 전조, 억제제, 파트너 유무, 혼자 버티는 방식이 서로 이어져야 한다.
+- 관능성은 노골적 행위가 아니라 억제 실패 직전의 미세한 행동으로 만든다. 목소리 저하, 숨 멎음, 손목을 잡기 전 정지, 옷깃에 남은 향, 문밖에서 버티는 동선, 발끝 도발을 우선한다.
+- 유사어 반복을 피한다. 같은 결과 안에서 "향", "반응", "무너진다", "버틴다"를 과용하지 말고 구체적 사물과 행동으로 바꾼다.
+- 결과는 팬이 캡처해 저장하고 싶을 정도로 선명해야 하지만, 검사소 문체를 깨뜨리면 안 된다.
+
 [분류 체계] 축이 두 개다. 반드시 둘 다 판정한다.
 - 판정(role): 알파 / 오메가
 - 등급(grade): 극우성 / 우성 / 열성 / 극열성. 같은 판정 안에서의 발현 강도이며 판정과 독립이다.
@@ -722,6 +732,9 @@ cycle_profile은 단일 개체 결과지의 핵심이다. 역할에 따라 독�
 - solo=false이면 subjects는 반드시 2명이다. solo=true이면 subject는 반드시 1명이며 subjects, cross_reaction, imprint를 만들지 마라.
 - role은 "알파" 또는 "오메가"만, grade는 "극우성" "우성" "열성" "극열성" 중 하나만 쓴다.
 - 모든 level은 1~5, 모든 percent 계열 숫자는 0~100 정수로 쓴다.
+- 모든 문자열 필드는 빈 문자열로 두지 마라. 단, 단일 개체에서 역할상 쓰지 않는 cycle_profile의 반대 주기와 반대 management, 알파의 nesting만 비워도 된다.
+- JSON 키 이름은 출력 스키마와 철자까지 완전히 같아야 한다. 추가 키를 만들지 마라.
+- 한 필드 안에서 개체 이름을 잘못 바꾸지 마라. subjects[0]은 항상 대상 A, subjects[1]은 항상 대상 B다.
 
 [출력] 어떤 경우에도 아래 JSON만 출력한다. 코드펜스·설명·서두·반려 사유를 붙이지 마라.
 ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":{"family":"","top":"","heart":"","base":"","intensity":0,"persistence":"","diffusion":"","trigger":"","scent_code":""},"evidence":["",""],"remarks":""},"codename":"","rarity":{"total":0,"count":0},"counterfactual":"","warning":"","oneline":"","traits":{"metrics":[{"label":"신호 발신 강도","level":0},{"label":"감응 역치","level":0},{"label":"자기 억제력","level":0},{"label":"유대 형성 경향","level":0},{"label":"각인 수용성","level":0}],"note":""},"imprint_history":{"status":"","note":""},"cycle_profile":{"heat_cycle":"","rut_cycle":"","precursor":"","suppression_failure":"","heat_management":[{"label":"","note":""},{"label":"","note":""},{"label":"","note":""}],"rut_management":[{"label":"","note":""},{"label":"","note":""},{"label":"","note":""}],"nesting":"","isolation_warning":""},"prognosis":{"phase_1":"","phase_2":"","phase_3":""},"examiner_note":""}` : `{"subjects":[{"name":"","role":"","grade":"","confidence":0,"pheromone":{"family":"","top":"","heart":"","base":"","intensity":0,"persistence":"","diffusion":"","trigger":"","scent_code":""},"evidence":["",""],"remarks":""}],"codename":"","rarity":{"total":0,"count":0},"counterfactual":"","warning":"","oneline":"","cross_reaction":{"type_name":"","compatibility":0,"scent_sync":0,"scent_note":"","metrics":[{"label":"유대 형성 속도","level":0},{"label":"신호 간섭도","level":0},{"label":"상호 억제 가능성","level":0},{"label":"분리 내성","level":0},{"label":"장기 안정성","level":0}],"caution":""},"imprint":{"from":"","to":"","site_code":"","fixation":"","stability":0,"rationale":"","note":""},"imprint_loss":{"a":"","b":"","note":""},"cycle_interaction":{"heat":"","rut":"","together":"","failure":""},"prognosis":{"phase_1":"","phase_2":"","phase_3":""},"examiner_note":""}`}`;
@@ -758,9 +771,9 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
           phase: "generate",
           contents: [{ role: "user", parts }],
           generationConfig: {
-            maxOutputTokens: 4000,
-            temperature: 0.72,
-            topP: 0.9,
+            maxOutputTokens: 5200,
+            temperature: 0.66,
+            topP: 0.86,
             responseMimeType: "application/json",
           },
         }),
