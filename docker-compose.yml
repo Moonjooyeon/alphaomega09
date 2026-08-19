@@ -22,7 +22,7 @@ services:
       SESSION_SECRET: ${SESSION_SECRET}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_API_BASE: ${GEMINI_API_BASE:-https://monogpt.kr/api/monorouter/v1/gemini}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
       GEMINI_THINKING_BUDGET: ${GEMINI_THINKING_BUDGET:-2048}
       USD_TO_KRW: ${USD_TO_KRW:-1400}
       GEMINI_INPUT_USD_PER_MILLION: ${GEMINI_INPUT_USD_PER_MILLION:-0.25}

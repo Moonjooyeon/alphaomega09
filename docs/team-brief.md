@@ -192,7 +192,7 @@ Alphaomega는 기존 프론트 단독 Gemini 호출 구조에서, Docker Compose
 현재 기본값:
 
 - `GEMINI_API_BASE=https://monogpt.kr/api/monorouter/v1/gemini`
-- `GEMINI_MODEL=gemini-3.1-flash-lite`
+- `GEMINI_MODEL=gemini-3.5-flash-lite`
 - `PASS_USES_PER_PURCHASE=11`
 - MonoGPT 라우터 호출 형태:
   - `https://monogpt.kr/api/monorouter/v1/gemini/v1beta/models/{model}:generateContent`
@@ -309,7 +309,7 @@ curl http://127.0.0.1:8080/health
 
 - Netlify Functions 기반에서 `.netlify` 경로 오류가 나던 문제를 피하기 위해 Docker Compose 서버 기준으로 전환했습니다.
 - 브라우저에서 React 전역이 없어 터지던 번들 문제를 Vite/React import 기준으로 정리했습니다.
-- `gemini-2.5-flash-lite` 신규 사용자 제한 문제를 피하기 위해 기본 모델을 `gemini-3.1-flash-lite`로 바꿨습니다.
+- `gemini-2.5-flash-lite`, `gemini-3.1-flash-lite` 제한 문제를 피하기 위해 기본 모델을 `gemini-3.5-flash-lite`로 바꿨습니다.
 - MonoGPT 라우터는 native Gemini URL과 다르므로 `GEMINI_API_BASE`와 endpoint 조립 로직을 분리했습니다.
 - MonoGPT 라우터에서 `thinkingConfig`가 문제될 수 있어 라우터 호출 시 제거합니다.
 - Gemini 호출 성공만으로 이용권을 차감하면 안 되므로 차감은 최종 결과 확정 뒤 별도 API로 분리했습니다.
