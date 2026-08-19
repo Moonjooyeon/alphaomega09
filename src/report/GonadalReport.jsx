@@ -50,10 +50,11 @@ function pickTossPassProduct(products = []) {
   }
   const text = (product) => `${product.displayName || ""} ${product.description || ""} ${product.sku || ""}`;
   const consumables = products.filter((product) => product.type === "CONSUMABLE");
+  const passProductPattern = /11|검사|이용권|사용권|pass/i;
   return (
-    consumables.find((product) => /5|검사|이용권|pass/i.test(text(product))) ||
+    consumables.find((product) => passProductPattern.test(text(product))) ||
     consumables[0] ||
-    products.find((product) => /5|검사|이용권|pass/i.test(text(product))) ||
+    products.find((product) => passProductPattern.test(text(product))) ||
     products[0]
   );
 }
