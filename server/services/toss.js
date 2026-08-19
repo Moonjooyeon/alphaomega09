@@ -8,6 +8,12 @@ function tossErrorDetail(body, fallback) {
   if (error && typeof error === "object") {
     return error.reason || error.message || error.errorCode || fallback;
   }
+  if (typeof error === "string" && /<!doctype html|<html|cloudfront/i.test(error)) {
+    return "Toss API가 HTML/CloudFront 오류를 반환했습니다. TOSS_API_BASE와 mTLS 인증서/키 파일 위치를 확인해 주십시오.";
+  }
+  if (typeof body?.message === "string" && /<!doctype html|<html|cloudfront/i.test(body.message)) {
+    return "Toss API가 HTML/CloudFront 오류를 반환했습니다. TOSS_API_BASE와 mTLS 인증서/키 파일 위치를 확인해 주십시오.";
+  }
   return body?.message || body?.error || fallback;
 }
 
