@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { appLogin, IAP } from "@apps-in-toss/web-framework";
+import html2canvas from "html2canvas";
 import { ASSETS } from "./assets.js";
 import { CSS } from "./styles.js";
 import {
@@ -37,6 +38,7 @@ import { localMockReport } from "./mockReport.js";
 
 const AUTH_TOKEN_STORAGE = "ao_auth_token";
 const GEMINI_TIMEOUT_MS = 90000;
+const PASS_TIMEOUT_MS = 15000;
 const MAX_EXPORT_CANVAS_SIDE = 8192;
 const SITE_CODES = Object.keys(SITES);
 const NON_DEFAULT_SITE_CODES = SITE_CODES.filter((code) => code !== "NP");
@@ -258,6 +260,19 @@ function hasCompleteReport(report, solo) {
       !isBlank(prognosis.phase_2) &&
       !isBlank(prognosis.phase_3)
   );
+}
+
+function withTimeout(promise, ms, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => {
+        const error = new Error(message);
+        error.name = "TimeoutError";
+        reject(error);
+      }, ms);
+    }),
+  ]);
 }
 
 async function apiFetch(path, { token = "", ...options } = {}) {
@@ -485,6 +500,8 @@ export default function GonadalReport() {
   const [crop, setCrop] = useState(null);
   const [no] = useState(caseNo);
   const sheetRef = useRef(null);
+  const requestSeq = useRef(0);
+  const activeController = useRef(null);
   const files = [useRef(null), useRef(null)];
   const pairFile = useRef(null);
   const solo = mode === "개인 감별";
@@ -530,7 +547,11 @@ export default function GonadalReport() {
     }
     setPassBusy(true);
     try {
-      const body = await apiFetch("/passes", { token });
+      const body = await withTimeout(
+        apiFetch("/passes", { token }),
+        PASS_TIMEOUT_MS,
+        "이용권 조회가 지연되었습니다."
+      );
       setPassInfo(body);
       setPassErr("");
       return body;
@@ -693,69 +714,56 @@ export default function GonadalReport() {
     const el = sheetRef.current;
     if (!el || savingImage) return;
     setSavingImage(true);
+    setErr("");
     try {
+      await document.fonts?.ready?.catch?.(() => {});
       const width = Math.ceil(el.scrollWidth);
       const height = Math.ceil(el.scrollHeight);
-      const clone = el.cloneNode(true);
-      clone.querySelectorAll(".gm-actions").forEach((node) => node.remove());
-      const exportCss = CSS.replace(/@import[^;]+;/g, "");
-      const markup = `
-        <div xmlns="http://www.w3.org/1999/xhtml" class="gm" style="padding:0;background:transparent;min-height:auto;width:${width}px;">
-          <style>${exportCss}</style>
-          ${clone.outerHTML}
-        </div>
-      `;
-      const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-          <foreignObject width="100%" height="100%">${markup}</foreignObject>
-        </svg>
-      `;
-      const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
-      const img = new Image();
-      img.onload = async () => {
-        try {
-          const canvas = document.createElement("canvas");
-          const maxRatio = Math.min(MAX_EXPORT_CANVAS_SIDE / width, MAX_EXPORT_CANVAS_SIDE / height);
-          const ratio = Math.max(0.6, Math.min(1.5, window.devicePixelRatio || 1, maxRatio));
-          canvas.width = width * ratio;
-          canvas.height = height * ratio;
-          const ctx = canvas.getContext("2d");
-          ctx.scale(ratio, ratio);
-          ctx.drawImage(img, 0, 0);
-          URL.revokeObjectURL(url);
-          const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
-          if (!blob) throw new Error("empty image blob");
-          const file = new File([blob], `${no}.png`, { type: "image/png" });
-          if (navigator.canShare?.({ files: [file] }) && navigator.share) {
+      const maxRatio = Math.min(MAX_EXPORT_CANVAS_SIDE / width, MAX_EXPORT_CANVAS_SIDE / height);
+      const ratio = Math.max(0.35, Math.min(1.25, window.devicePixelRatio || 1, maxRatio));
+      const canvas = await html2canvas(el, {
+        allowTaint: true,
+        backgroundColor: "#fcfcf8",
+        logging: false,
+        scale: ratio,
+        scrollX: 0,
+        scrollY: -window.scrollY,
+        useCORS: true,
+        width,
+        height,
+        windowWidth: width,
+        windowHeight: height,
+        ignoreElements: (node) => Boolean(node?.classList?.contains("gm-actions")),
+      });
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob) throw new Error("empty image blob");
+
+      const filename = `${no}.png`;
+      if (typeof File !== "undefined" && navigator.share) {
+        const file = new File([blob], filename, { type: "image/png" });
+        if (!navigator.canShare || navigator.canShare({ files: [file] })) {
+          try {
             await navigator.share({ files: [file], title: "캐릭터 리포트" });
-          } else {
-            const imageUrl = URL.createObjectURL(blob);
-            window.open(imageUrl, "_blank", "noopener,noreferrer");
-            const a = document.createElement("a");
-            a.download = `${no}.png`;
-            a.href = imageUrl;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => URL.revokeObjectURL(imageUrl), 1000);
+            return;
+          } catch (error) {
+            if (error?.name === "AbortError") return;
           }
-        } catch (error) {
-          if (error?.name !== "AbortError") {
-            setErr("결과 이미지를 저장하지 못했습니다. 다시 시도해 주십시오.");
-          }
-        } finally {
-          setSavingImage(false);
         }
-      };
-      img.onerror = () => {
-        URL.revokeObjectURL(url);
-        setSavingImage(false);
-        setErr("결과 이미지를 저장하지 못했습니다. 다시 시도해 주십시오.");
-      };
-      img.src = url;
-    } catch {
+      }
+
+      const imageUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.download = filename;
+      a.href = imageUrl;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.open(imageUrl, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(imageUrl), 30000);
+    } catch (error) {
+      setErr(`결과 이미지를 저장하지 못했습니다 — ${error?.message || "다시 시도해 주십시오."}`);
+    } finally {
       setSavingImage(false);
-      setErr("결과 이미지를 저장하지 못했습니다. 다시 시도해 주십시오.");
     }
   };
 
@@ -801,11 +809,14 @@ export default function GonadalReport() {
       .replace("B→A", `${nm(1, "B")} → ${nm(0, "A")}`);
 
   const resetForRetry = () => {
+    activeController.current?.abort();
+    requestSeq.current += 1;
     setStage("input");
     setData(null);
     setErr("");
     setReject("");
     setStep(0);
+    setSavingImage(false);
   };
 
   async function run() {
@@ -818,17 +829,41 @@ export default function GonadalReport() {
       setErr("토스 로그인 후 검사를 접수할 수 있습니다.");
       return;
     }
-    const passes = await refreshPasses(authToken);
-    if (!passes || Number(passes.totalRemainingUses || 0) < 1) {
-      setErr(PURCHASE_MOCK ? "사용 가능한 이용권이 없습니다. 테스트 이용권을 먼저 발급해 주십시오." : "사용 가능한 이용권이 없습니다.");
-      return;
-    }
+
+    activeController.current?.abort();
+    const runId = requestSeq.current + 1;
+    requestSeq.current = runId;
+    const fail = (msg) => {
+      if (requestSeq.current !== runId) return;
+      setErr(msg);
+      setStage("input");
+    };
+
     setStage("running");
     setStep(0);
     setData(null);
     setErr("");
     setReject("");
-    const tick = setInterval(() => setStep((s) => (s + 1) % LOADING.length), 2600);
+
+    let passes = null;
+    try {
+      passes = await withTimeout(
+        refreshPasses(authToken),
+        PASS_TIMEOUT_MS,
+        "이용권 확인이 지연되었습니다."
+      );
+    } catch (error) {
+      return fail(`${error?.message || "이용권 확인에 실패했습니다."} 이용권은 차감되지 않았습니다.`);
+    }
+    if (requestSeq.current !== runId) return;
+    if (!passes || Number(passes.totalRemainingUses || 0) < 1) {
+      setErr(PURCHASE_MOCK ? "사용 가능한 이용권이 없습니다. 테스트 이용권을 먼저 발급해 주십시오." : "사용 가능한 이용권이 없습니다.");
+      setStage("input");
+      return;
+    }
+    const tick = setInterval(() => {
+      if (requestSeq.current === runId) setStep((s) => (s + 1) % LOADING.length);
+    }, 2600);
     let timeout = null;
 
     const prompt = `당신은 성선의학연구소의 감별 담당 임상병리사다. 제출된 두 개체의 프로필과 이미지를 근거로 등급 감별·교차반응·각인 부위 검사 결과 보고서를 작성한다.
@@ -971,14 +1006,10 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
       });
     }
 
-    const fail = (msg) => {
-      setErr(msg);
-      setStage("input");
-    };
-
     try {
       const chargeKey = makeChargeKey();
       const controller = new AbortController();
+      activeController.current = controller;
       timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
       const res = await fetch(GEMINI_PROXY_ENDPOINT, {
         method: "POST",
@@ -1000,8 +1031,10 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
         }),
       });
       clearTimeout(timeout);
+      if (requestSeq.current !== runId) return;
 
       const responseText = await res.text();
+      if (requestSeq.current !== runId) return;
       let j;
       try {
         j = JSON.parse(responseText);
@@ -1030,6 +1063,7 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
       const a = clean.indexOf("{");
       const b = clean.lastIndexOf("}");
       if (a < 0 || b <= a) {
+        if (requestSeq.current !== runId) return;
         setReject(clean);
         setStage("rejected");
         return;
@@ -1060,16 +1094,25 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
       }
 
       try {
-        await apiFetch("/passes/consume", {
-          token: authToken,
-          method: "POST",
-          body: JSON.stringify({ sessionId: j.sessionId, chargeKey }),
-        });
-        await refreshPasses(authToken);
+        await withTimeout(
+          apiFetch("/passes/consume", {
+            token: authToken,
+            method: "POST",
+            body: JSON.stringify({ sessionId: j.sessionId, chargeKey }),
+          }),
+          PASS_TIMEOUT_MS,
+          "이용권 차감 확인이 지연되었습니다."
+        );
+        await withTimeout(
+          refreshPasses(authToken),
+          PASS_TIMEOUT_MS,
+          "잔여 이용권 갱신이 지연되었습니다."
+        );
       } catch (error) {
         return fail(`이용권 차감에 실패했습니다 — ${error?.message || "잔여 횟수를 확인해 주십시오."}`);
       }
 
+      if (requestSeq.current !== runId) return;
       setData(normalized);
       setStage("report");
     } catch (e) {
@@ -1077,6 +1120,7 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
     } finally {
       if (timeout) clearTimeout(timeout);
       clearInterval(tick);
+      if (requestSeq.current === runId) activeController.current = null;
     }
   }
 
