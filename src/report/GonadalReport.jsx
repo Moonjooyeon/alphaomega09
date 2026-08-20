@@ -36,6 +36,22 @@ import { localMockReport } from "./mockReport.js";
    ───────────────────────────────────────────── */
 
 const AUTH_TOKEN_STORAGE = "ao_auth_token";
+const SITE_ALIASES = [
+  [/NECK|목덜미|뒷목/i, "NP"],
+  [/CLAVICLE|쇄골/i, "CL"],
+  [/WRIST|손목/i, "WR"],
+  [/SCAPULA|견갑/i, "SC"],
+  [/EAR|귀/i, "ME"],
+  [/CHEST|가슴|심장/i, "TH"],
+  [/RIB|옆구리/i, "RB"],
+  [/ANKLE|발목/i, "AN"],
+  [/PALM|손바닥/i, "PL"],
+  [/HAIRLINE|머리카락|목선/i, "HL"],
+];
+const TEXT_FIXES = [
+  [/숨숨오감/g, "숨과 오감"],
+  [/숨숨/g, "숨"],
+];
 
 function makeChargeKey() {
   try {
@@ -72,6 +88,58 @@ function saveStoredToken(token) {
     if (token) localStorage.setItem(AUTH_TOKEN_STORAGE, token);
     else localStorage.removeItem(AUTH_TOKEN_STORAGE);
   } catch {}
+}
+
+function cleanReportText(value) {
+  if (typeof value !== "string") return value;
+  return TEXT_FIXES.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), value);
+}
+
+function deepCleanReportText(value) {
+  if (Array.isArray(value)) return value.map(deepCleanReportText);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, deepCleanReportText(item)]));
+  }
+  return cleanReportText(value);
+}
+
+function normalizeSiteCode(code = "") {
+  const raw = String(code || "").trim().toUpperCase();
+  if (SITES[raw]) return raw;
+  const hit = SITE_ALIASES.find(([pattern]) => pattern.test(raw));
+  return hit ? hit[1] : raw;
+}
+
+function normalizeImprintName(name, subjects, fallbackIndex) {
+  const raw = String(name || "").trim();
+  const found = subjects.find((subject) => {
+    const subjectName = String(subject?.name || "").trim();
+    return subjectName && raw.includes(subjectName);
+  });
+  return found?.name || subjects[fallbackIndex]?.name || raw;
+}
+
+function normalizeReport(rawReport, subjects, answer) {
+  const report = deepCleanReportText(rawReport);
+  if (!report?.imprint) return report;
+
+  report.imprint.site_code = normalizeSiteCode(report.imprint.site_code);
+
+  const pairSubjects = subjects.slice(0, 2);
+  if (pairSubjects.length < 2 || report.imprint.fixation === "미형성") return report;
+
+  if (answer === "A→B") {
+    report.imprint.from = pairSubjects[0].name;
+    report.imprint.to = pairSubjects[1].name;
+  } else if (answer === "B→A") {
+    report.imprint.from = pairSubjects[1].name;
+    report.imprint.to = pairSubjects[0].name;
+  } else {
+    report.imprint.from = normalizeImprintName(report.imprint.from, pairSubjects, 0);
+    report.imprint.to = normalizeImprintName(report.imprint.to, pairSubjects, 1);
+  }
+
+  return report;
 }
 
 async function apiFetch(path, { token = "", ...options } = {}) {
@@ -200,7 +268,7 @@ function Codename({ data }) {
   return (
     <div className="gm-codename">
       <div>
-        <span>분류 명칭</span>
+        <span>검체 코드</span>
         <b className="gm-serif">{data.codename}</b>
       </div>
       {pct && (
@@ -719,6 +787,9 @@ cycle_profile (개체 프로필 핵심 - 꼴포인트 집약):
 [최종 감사 규칙]
 - 출력 직전에 JSON을 한 번 파싱 가능한 형태로 검사한다. 쉼표 누락, 따옴표 누락, 주석, 코드펜스, 앞뒤 설명은 모두 실패다.
 - evidence는 반드시 제출된 한 줄 설명이나 관찰 가능한 이미지 단서에서 온 짧은 구절만 쓴다.
+- from/to/name에는 제출된 이름을 한 글자도 바꾸지 말고 그대로 쓴다. 임의 자모, 별명, 반복 음절을 붙이지 마라.
+- site_code는 반드시 NP, CL, WR, SC, ME, TH, RB, AN, PL, HL 중 하나만 쓴다. NECK-01 같은 임의 코드를 만들지 마라.
+- 의미가 불명확한 조어, 실수처럼 보이는 반복어, 사전에 없는 결합어를 만들지 마라.
 - examiner_note를 제외한 모든 필드는 보고서 본문이다. AI, 모델, 프롬프트, 요청, 자료 부족, 이미지 미첨부, 자동 추론이라는 말을 쓰지 마라.
 - solo=false이면 subjects는 반드시 2명이다. solo=true이면 subject는 반드시 1명이며 subjects, cross_reaction, imprint를 만들지 마라.
 - role은 "알파" 또는 "오메가"만, grade는 "극우성" "우성" "열성" "극열성" 중 하나만 쓴다.
@@ -833,7 +904,7 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
         return fail(`이용권 차감에 실패했습니다 — ${error?.message || "잔여 횟수를 확인해 주십시오."}`);
       }
 
-      setData(parsed);
+      setData(normalizeReport(parsed, subj, ans.imprint));
       setStage("report");
     } catch (e) {
       fail(`통신에 실패했습니다 — ${e?.message || "네트워크 오류"}`);
