@@ -363,6 +363,7 @@ export default function GonadalReport() {
   const [passBusy, setPassBusy] = useState(false);
   const [passErr, setPassErr] = useState("");
   const [paymentBusy, setPaymentBusy] = useState(false);
+  const [savingImage, setSavingImage] = useState(false);
   const [crop, setCrop] = useState(null);
   const [no] = useState(caseNo);
   const sheetRef = useRef(null);
@@ -572,7 +573,8 @@ export default function GonadalReport() {
 
   const saveReportImage = async () => {
     const el = sheetRef.current;
-    if (!el) return;
+    if (!el || savingImage) return;
+    setSavingImage(true);
     try {
       const width = Math.ceil(el.scrollWidth);
       const height = Math.ceil(el.scrollHeight);
@@ -591,26 +593,47 @@ export default function GonadalReport() {
       `;
       const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
       const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const ratio = Math.min(2, window.devicePixelRatio || 1);
-        canvas.width = width * ratio;
-        canvas.height = height * ratio;
-        const ctx = canvas.getContext("2d");
-        ctx.scale(ratio, ratio);
-        ctx.drawImage(img, 0, 0);
-        URL.revokeObjectURL(url);
-        const a = document.createElement("a");
-        a.download = `${no}.png`;
-        a.href = canvas.toDataURL("image/png");
-        a.click();
+      img.onload = async () => {
+        try {
+          const canvas = document.createElement("canvas");
+          const ratio = Math.min(2, window.devicePixelRatio || 1);
+          canvas.width = width * ratio;
+          canvas.height = height * ratio;
+          const ctx = canvas.getContext("2d");
+          ctx.scale(ratio, ratio);
+          ctx.drawImage(img, 0, 0);
+          URL.revokeObjectURL(url);
+          const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+          if (!blob) throw new Error("empty image blob");
+          const file = new File([blob], `${no}.png`, { type: "image/png" });
+          if (navigator.canShare?.({ files: [file] }) && navigator.share) {
+            await navigator.share({ files: [file], title: "캐릭터 리포트" });
+          } else {
+            const imageUrl = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.download = `${no}.png`;
+            a.href = imageUrl;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(imageUrl), 1000);
+          }
+        } catch (error) {
+          if (error?.name !== "AbortError") {
+            setErr("결과 이미지를 저장하지 못했습니다. 다시 시도해 주십시오.");
+          }
+        } finally {
+          setSavingImage(false);
+        }
       };
       img.onerror = () => {
         URL.revokeObjectURL(url);
+        setSavingImage(false);
         setErr("결과 이미지를 저장하지 못했습니다. 다시 시도해 주십시오.");
       };
       img.src = url;
     } catch {
+      setSavingImage(false);
       setErr("결과 이미지를 저장하지 못했습니다. 다시 시도해 주십시오.");
     }
   };
@@ -1588,8 +1611,8 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
           각인 부위 판정은 교차반응 수치와 문진 응답을 종합한 추정치입니다.
           {stage === "report" && (
             <div className="gm-actions">
-              <button className="gm-again" onClick={saveReportImage}>
-                결과 이미지 저장
+              <button className="gm-again" onClick={saveReportImage} disabled={savingImage}>
+                {savingImage ? "이미지 준비 중" : "결과 이미지 저장"}
               </button>
               <button className="gm-again" onClick={() => { setStage("input"); setData(null); }}>
                 재 검 접 수
