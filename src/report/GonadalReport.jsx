@@ -36,6 +36,10 @@ import { localMockReport } from "./mockReport.js";
    ───────────────────────────────────────────── */
 
 const AUTH_TOKEN_STORAGE = "ao_auth_token";
+const GEMINI_TIMEOUT_MS = 90000;
+const MAX_EXPORT_CANVAS_SIDE = 8192;
+const SITE_CODES = Object.keys(SITES);
+const NON_DEFAULT_SITE_CODES = SITE_CODES.filter((code) => code !== "NP");
 const SITE_ALIASES = [
   [/NECK|목덜미|뒷목/i, "NP"],
   [/CLAVICLE|쇄골/i, "CL"],
@@ -52,6 +56,16 @@ const TEXT_FIXES = [
   [/숨숨오감/g, "숨과 오감"],
   [/숨숨/g, "숨"],
 ];
+
+const FALLBACK_COPY = {
+  cycleHeat: "주기 신호가 감지되는 즉시 상대의 발신향이 먼저 흔들리고, 주변 공기가 낮게 가라앉는다.",
+  cycleRut: "러트 압력이 올라오는 순간 호흡 간격이 무너지고, 평소의 거리 조절이 가장 먼저 실패한다.",
+  cycleTogether: "둘은 같은 공간에 머무르되 직접 닿는 시간을 제한하며, 억제제와 체향 사이에서 버티는 방식을 택한다.",
+  cycleFailure: "가장 약한 조건은 상대가 평소보다 낮은 목소리로 이름을 부르는 순간이다.",
+  phase1: "평시에는 시선과 동선이 먼저 새어 나온다. 상대가 지나간 자리만 한 박자 늦게 확인한다.",
+  phase2: "임계점에서는 말보다 몸의 방향이 먼저 바뀐다. 피하려던 쪽이 먼저 가까운 거리를 만든다.",
+  phase3: "최종 단계에서는 남은 체향과 소지품을 기준으로 생활 반경이 재편된다.",
+};
 
 function makeChargeKey() {
   try {
@@ -95,6 +109,19 @@ function cleanReportText(value) {
   return TEXT_FIXES.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), value);
 }
 
+function isBlank(value) {
+  return typeof value !== "string" || !value.trim();
+}
+
+function stableHash(text = "") {
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash);
+}
+
 function deepCleanReportText(value) {
   if (Array.isArray(value)) return value.map(deepCleanReportText);
   if (value && typeof value === "object") {
@@ -110,6 +137,32 @@ function normalizeSiteCode(code = "") {
   return hit ? hit[1] : raw;
 }
 
+function pickVariedSiteCode(subjects, answer, currentCode, report) {
+  const evidence = [
+    answer,
+    ...subjects.flatMap((subject) => [subject?.name, subject?.line]),
+    report?.imprint?.rationale,
+    report?.imprint?.note,
+  ].join(" ");
+  const normalized = normalizeSiteCode(currentCode);
+  if (SITES[normalized] && normalized !== "NP") return normalized;
+  if (normalized === "NP" && /목덜미|뒷목|목선|neck/i.test(evidence)) return normalized;
+  const pool = normalized === "NP" ? NON_DEFAULT_SITE_CODES : SITE_CODES;
+  return pool[stableHash(evidence) % pool.length] || "WR";
+}
+
+function ensureText(object, key, fallback) {
+  if (object && isBlank(object[key])) object[key] = fallback;
+}
+
+function ensureManagement(list, labels) {
+  const current = Array.isArray(list) ? list : [];
+  return labels.map((label, index) => ({
+    label: current[index]?.label?.trim() || label,
+    note: current[index]?.note?.trim() || `${label} 항목에서 주기 반응이 관찰되며, 결과 확정 전 보정 기록으로 유지된다.`,
+  }));
+}
+
 function normalizeImprintName(name, subjects, fallbackIndex) {
   const raw = String(name || "").trim();
   const found = subjects.find((subject) => {
@@ -121,25 +174,90 @@ function normalizeImprintName(name, subjects, fallbackIndex) {
 
 function normalizeReport(rawReport, subjects, answer) {
   const report = deepCleanReportText(rawReport);
-  if (!report?.imprint) return report;
-
-  report.imprint.site_code = normalizeSiteCode(report.imprint.site_code);
-
   const pairSubjects = subjects.slice(0, 2);
-  if (pairSubjects.length < 2 || report.imprint.fixation === "미형성") return report;
 
-  if (answer === "A→B") {
-    report.imprint.from = pairSubjects[0].name;
-    report.imprint.to = pairSubjects[1].name;
-  } else if (answer === "B→A") {
-    report.imprint.from = pairSubjects[1].name;
-    report.imprint.to = pairSubjects[0].name;
-  } else {
-    report.imprint.from = normalizeImprintName(report.imprint.from, pairSubjects, 0);
-    report.imprint.to = normalizeImprintName(report.imprint.to, pairSubjects, 1);
+  if (report?.imprint) {
+    report.imprint.site_code = pickVariedSiteCode(pairSubjects, answer, report.imprint.site_code, report);
+
+    if (pairSubjects.length >= 2 && report.imprint.fixation !== "미형성") {
+      if (answer === "A→B") {
+        report.imprint.from = pairSubjects[0].name;
+        report.imprint.to = pairSubjects[1].name;
+      } else if (answer === "B→A") {
+        report.imprint.from = pairSubjects[1].name;
+        report.imprint.to = pairSubjects[0].name;
+      } else {
+        report.imprint.from = normalizeImprintName(report.imprint.from, pairSubjects, 0);
+        report.imprint.to = normalizeImprintName(report.imprint.to, pairSubjects, 1);
+      }
+    }
+  }
+
+  if (report?.cycle_interaction) {
+    ensureText(report.cycle_interaction, "heat", FALLBACK_COPY.cycleHeat);
+    ensureText(report.cycle_interaction, "rut", FALLBACK_COPY.cycleRut);
+    ensureText(report.cycle_interaction, "together", FALLBACK_COPY.cycleTogether);
+    ensureText(report.cycle_interaction, "failure", FALLBACK_COPY.cycleFailure);
+  }
+
+  if (report?.prognosis) {
+    ensureText(report.prognosis, "phase_1", FALLBACK_COPY.phase1);
+    ensureText(report.prognosis, "phase_2", FALLBACK_COPY.phase2);
+    ensureText(report.prognosis, "phase_3", FALLBACK_COPY.phase3);
+  }
+
+  if (report?.cycle_profile) {
+    ensureText(report.cycle_profile, "heat_cycle", "히트 주기 기록은 체온 상승과 호흡 간격 변화 중심으로 보정 기재된다.");
+    ensureText(report.cycle_profile, "rut_cycle", "러트 주기 기록은 발신향 압력과 통제력 저하 중심으로 보정 기재된다.");
+    ensureText(report.cycle_profile, "precursor", "발현 전조는 시선, 호흡, 체향 추적 행동에서 먼저 관찰된다.");
+    ensureText(report.cycle_profile, "suppression_failure", "억제가 깨지는 순간에는 가장 가까운 체향 단서에 반응이 집중된다.");
+    ensureText(report.cycle_profile, "nesting", "체향이 남은 물건을 기준으로 안정 구역을 재구성한다.");
+    ensureText(report.cycle_profile, "isolation_warning", "장시간 고립 시 판단 저하와 주기 반응 악화가 동반될 수 있다.");
+    report.cycle_profile.heat_management = ensureManagement(report.cycle_profile.heat_management, ["약물 반응", "파트너 유무", "혼자 버티는 법"]);
+    report.cycle_profile.rut_management = ensureManagement(report.cycle_profile.rut_management, ["약물 반응", "파트너 유무", "혼자 버티는 법"]);
   }
 
   return report;
+}
+
+function hasCompleteReport(report, solo) {
+  if (solo) {
+    const profile = report?.cycle_profile || {};
+    const prognosis = report?.prognosis || {};
+    return Boolean(
+      report?.subject &&
+        !isBlank(report.subject.name) &&
+        !isBlank(report.subject.role) &&
+        !isBlank(report.subject.grade) &&
+        !isBlank(profile.heat_cycle) &&
+        !isBlank(profile.rut_cycle) &&
+        !isBlank(profile.precursor) &&
+        !isBlank(profile.suppression_failure) &&
+        Array.isArray(profile.heat_management) &&
+        profile.heat_management.length >= 3 &&
+        Array.isArray(profile.rut_management) &&
+        profile.rut_management.length >= 3 &&
+        !isBlank(prognosis.phase_1) &&
+        !isBlank(prognosis.phase_2) &&
+        !isBlank(prognosis.phase_3)
+    );
+  }
+
+  const cycle = report?.cycle_interaction || {};
+  const prognosis = report?.prognosis || {};
+  return Boolean(
+    Array.isArray(report?.subjects) &&
+      report.subjects.length >= 2 &&
+      report.cross_reaction &&
+      report.imprint &&
+      !isBlank(cycle.heat) &&
+      !isBlank(cycle.rut) &&
+      !isBlank(cycle.together) &&
+      !isBlank(cycle.failure) &&
+      !isBlank(prognosis.phase_1) &&
+      !isBlank(prognosis.phase_2) &&
+      !isBlank(prognosis.phase_3)
+  );
 }
 
 async function apiFetch(path, { token = "", ...options } = {}) {
@@ -580,9 +698,10 @@ export default function GonadalReport() {
       const height = Math.ceil(el.scrollHeight);
       const clone = el.cloneNode(true);
       clone.querySelectorAll(".gm-actions").forEach((node) => node.remove());
+      const exportCss = CSS.replace(/@import[^;]+;/g, "");
       const markup = `
         <div xmlns="http://www.w3.org/1999/xhtml" class="gm" style="padding:0;background:transparent;min-height:auto;width:${width}px;">
-          <style>${CSS}</style>
+          <style>${exportCss}</style>
           ${clone.outerHTML}
         </div>
       `;
@@ -596,7 +715,8 @@ export default function GonadalReport() {
       img.onload = async () => {
         try {
           const canvas = document.createElement("canvas");
-          const ratio = Math.min(2, window.devicePixelRatio || 1);
+          const maxRatio = Math.min(MAX_EXPORT_CANVAS_SIDE / width, MAX_EXPORT_CANVAS_SIDE / height);
+          const ratio = Math.max(0.6, Math.min(1.5, window.devicePixelRatio || 1, maxRatio));
           canvas.width = width * ratio;
           canvas.height = height * ratio;
           const ctx = canvas.getContext("2d");
@@ -610,6 +730,7 @@ export default function GonadalReport() {
             await navigator.share({ files: [file], title: "캐릭터 리포트" });
           } else {
             const imageUrl = URL.createObjectURL(blob);
+            window.open(imageUrl, "_blank", "noopener,noreferrer");
             const a = document.createElement("a");
             a.download = `${no}.png`;
             a.href = imageUrl;
@@ -679,7 +800,16 @@ export default function GonadalReport() {
       .replace("A→B", `${nm(0, "A")} → ${nm(1, "B")}`)
       .replace("B→A", `${nm(1, "B")} → ${nm(0, "A")}`);
 
+  const resetForRetry = () => {
+    setStage("input");
+    setData(null);
+    setErr("");
+    setReject("");
+    setStep(0);
+  };
+
   async function run() {
+    if (stage === "running") return;
     if (missing.length) {
       setErr(`미기재 항목이 있습니다 — ${missing.join(" · ")}`);
       return;
@@ -695,9 +825,11 @@ export default function GonadalReport() {
     }
     setStage("running");
     setStep(0);
+    setData(null);
     setErr("");
     setReject("");
     const tick = setInterval(() => setStep((s) => (s + 1) % LOADING.length), 2600);
+    let timeout = null;
 
     const prompt = `당신은 성선의학연구소의 감별 담당 임상병리사다. 제출된 두 개체의 프로필과 이미지를 근거로 등급 감별·교차반응·각인 부위 검사 결과 보고서를 작성한다.
 
@@ -742,6 +874,7 @@ export default function GonadalReport() {
 1. 모든 판정에는 근거가 있어야 한다. 근거란에는 제출된 프로필의 표현을 짧게 그대로 인용한다.
 2. 페로몬은 향수처럼 기술한다. top(첫인상), heart(체온에 데워져 살갗에서 농염하게 끓어오르는 향), base(침구에 짙게 배어 이성을 마비시키는 잔향)를 각각 다른 구체적 사물로 적는다. trigger에는 이 향이 통제를 벗어나 폭발하는 순간을 적는다.
 3. 각인은 방향 → 부위 → 정착도 순으로 판정한다. 각인 부위는 이성이 가장 먼저 붕괴되는 약점이자 애착의 중심이다. 왜 그 부위의 살갗에 닿지 못하면 환상통에 시달리고, 닿았을 땐 자기도 모르게 집착하게 되는지를 imprint.rationale 또는 imprint.note에 서사적으로 연결한다.
+   - 각인 부위는 자동으로 목덜미를 고르지 마라. 제출 자료의 성향과 관계 역학에 따라 NP(목덜미), CL(쇄골 아래), WR(손목 안쪽), SC(견갑골 사이), ME(귀 뒤), TH(왼쪽 가슴), RB(옆구리), AN(발목 안쪽), PL(손바닥), HL(뒷목 머리카락 선) 전체에서 다양하게 선택한다.
 4. 문체는 임상 기록이다. 감정어 없이 관찰된 사실과 수치로 기술하되 건조한 활자 뒤로 노골적인 텐션이 묻어나야 한다. 판정 절차나 입력 조건을 언급하는 메타 발언은 절대 금지한다.
 5. examiner_note에서만 검사자 개인의 아찔함이 새어나온 듯한 두 문장을 허용한다.
 
@@ -818,6 +951,7 @@ cycle_profile (개체 프로필 핵심 - 꼴포인트 집약):
 - role은 "알파" 또는 "오메가"만, grade는 "극우성" "우성" "열성" "극열성" 중 하나만 쓴다.
 - 모든 level은 1~5, 모든 percent 계열 숫자는 0~100 정수로 쓴다.
 - 모든 문자열 필드는 빈 문자열로 두지 마라.
+- cycle_interaction의 heat/rut/together/failure와 cycle_profile의 heat_cycle/rut_cycle/precursor/suppression_failure/management/nesting/isolation_warning은 절대 비우지 마라.
 - JSON 키 이름은 출력 스키마와 철자까지 완전히 같아야 한다. 추가 키를 만들지 마라.
 
 [출력] 어떤 경우에도 아래 JSON만 출력한다. 코드펜스·설명·서두·반려 사유를 붙이지 마라.
@@ -844,8 +978,11 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
 
     try {
       const chargeKey = makeChargeKey();
+      const controller = new AbortController();
+      timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
       const res = await fetch(GEMINI_PROXY_ENDPOINT, {
         method: "POST",
+        signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${authToken}`,
@@ -862,6 +999,7 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
           },
         }),
       });
+      clearTimeout(timeout);
 
       const responseText = await res.text();
       let j;
@@ -912,6 +1050,11 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
         return fail("결과에 필수 항목이 빠져 있습니다. 다시 접수해 주십시오.");
       }
 
+      const normalized = normalizeReport(parsed, subj, ans.imprint);
+      if (!hasCompleteReport(normalized, solo)) {
+        return fail("결과가 완성되지 않아 이용권을 차감하지 않았습니다. 다시 접수해 주십시오.");
+      }
+
       if (!j.sessionId) {
         return fail("검사 세션이 확인되지 않아 이용권을 차감할 수 없습니다.");
       }
@@ -927,11 +1070,12 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
         return fail(`이용권 차감에 실패했습니다 — ${error?.message || "잔여 횟수를 확인해 주십시오."}`);
       }
 
-      setData(normalizeReport(parsed, subj, ans.imprint));
+      setData(normalized);
       setStage("report");
     } catch (e) {
-      fail(`통신에 실패했습니다 — ${e?.message || "네트워크 오류"}`);
+      fail(e?.name === "AbortError" ? "검사 응답이 지연되어 중단했습니다. 이용권은 차감되지 않았습니다." : `통신에 실패했습니다 — ${e?.message || "네트워크 오류"}`);
     } finally {
+      if (timeout) clearTimeout(timeout);
       clearInterval(tick);
     }
   }
@@ -1222,7 +1366,7 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
             <div className="gm-reject">
               <p>{reject}</p>
             </div>
-            <button className="gm-again" onClick={() => setStage("input")}>
+            <button className="gm-again" onClick={resetForRetry}>
               재 접 수
             </button>
           </div>
@@ -1614,7 +1758,7 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
               <button className="gm-again" onClick={saveReportImage} disabled={savingImage}>
                 {savingImage ? "이미지 준비 중" : "결과 이미지 저장"}
               </button>
-              <button className="gm-again" onClick={() => { setStage("input"); setData(null); }}>
+              <button className="gm-again" onClick={resetForRetry}>
                 재 검 접 수
               </button>
             </div>
