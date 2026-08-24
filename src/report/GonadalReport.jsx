@@ -75,13 +75,22 @@ const TEXT_FIXES = [
 ];
 
 const FALLBACK_COPY = {
-  cycleHeat: "주기 신호가 감지되는 즉시 상대의 발신향이 먼저 흔들리고, 주변 공기가 낮게 가라앉는다.",
-  cycleRut: "러트 압력이 올라오는 순간 호흡 간격이 무너지고, 평소의 거리 조절이 가장 먼저 실패한다.",
-  cycleTogether: "둘은 같은 공간에 머무르되 직접 닿는 시간을 제한하며, 억제제와 체향 사이에서 버티는 방식을 택한다.",
-  cycleFailure: "가장 약한 조건은 상대가 평소보다 낮은 목소리로 이름을 부르는 순간이다.",
+  cycleHeat: "주기 신호가 감지되는 즉시 상대의 발신향이 먼저 흔들리고, 주변 공기가 낮게 가라앉는다. 버티던 쪽은 손끝의 떨림을 감추려 하지만 시선이 먼저 체향의 진원지를 따라간다.",
+  cycleRut: "러트 압력이 올라오는 순간 호흡 간격이 무너지고, 평소의 거리 조절이 가장 먼저 실패한다. 아닌 척 물러선 몸이 다시 같은 자리로 돌아오며 잔향을 붙잡는다.",
+  cycleTogether: "둘은 같은 공간에 머무르되 직접 닿는 시간을 제한하며, 억제제와 체향 사이에서 버티는 방식을 택한다. 그러나 숨이 겹치는 순간 규칙보다 먼저 몸의 방향이 무너진다.",
+  cycleFailure: "가장 약한 조건은 상대가 평소보다 낮은 목소리로 이름을 부르는 순간이다. 그 직후 먼저 피하던 쪽이 멈춰 서고, 늦게 무너지던 쪽의 손이 소지품을 놓친다.",
   phase1: "평시에는 시선과 동선이 먼저 새어 나온다. 상대가 지나간 자리만 한 박자 늦게 확인한다.",
   phase2: "임계점에서는 말보다 몸의 방향이 먼저 바뀐다. 피하려던 쪽이 먼저 가까운 거리를 만든다.",
-  phase3: "최종 단계에서는 남은 체향과 소지품을 기준으로 생활 반경이 재편된다.",
+  phase3: "최종 단계에서는 남은 체향과 소지품을 기준으로 생활 반경이 재편된다. 버리려던 물건이 끝내 서랍 안쪽에 남아 밤마다 같은 손에 잡힌다.",
+  soloHeat: "히트 주기 기록은 체온 상승과 호흡 간격 변화 중심으로 보정 기재된다. 억제 직전에는 손끝이 먼저 흐트러지고 체향이 남은 물건을 반복해서 확인한다.",
+  soloRut: "러트 주기 기록은 발신향 압력과 통제력 저하 중심으로 보정 기재된다. 평소 닫아 두던 동선이 무너지고, 가장 가까운 체향 단서에 반응이 몰린다.",
+  soloPrecursor: "발현 전조는 시선, 호흡, 체향 추적 행동에서 먼저 관찰된다. 혼자 있을수록 같은 물건을 되짚으며 몸이 먼저 기억한 방향으로 기운다.",
+  soloSuppression: "억제가 깨지는 순간에는 가장 가까운 체향 단서에 반응이 집중된다. 삼킨 약보다 늦게 남은 열감이 올라와 이성의 마지막 문장을 끊어낸다.",
+  soloNesting: "체향이 남은 물건을 기준으로 안정 구역을 재구성한다. 그 물건이 사라지면 공간 전체가 낯설어지고, 잠든 뒤에도 같은 자리를 더듬는다.",
+  soloIsolation: "장시간 고립 시 판단 저하와 주기 반응 악화가 동반될 수 있다. 구조가 늦어질수록 잠긴 문과 젖은 손끝 같은 흔적이 먼저 남는다.",
+  management: "해당 대응은 주기 반응을 늦추기 위한 임시 조치로 기록된다. 그러나 체향 자극이 겹치면 버티던 습관이 역으로 반응을 증폭시킨다.",
+  examiner: "오만하게 굳은 시선 아래에서 가장 먼저 무너지는 것은 호흡 간격이다. 기록상 통제력은 남아 있으나, 체향 자극 앞에서는 몸의 방향이 이미 답을 말한다.",
+  traitNote: "특정 자극 앞에서는 평소의 억제 패턴이 유의미하게 흔들린다. 아닌 척 유지하던 습관이 손끝과 동선에 먼저 새어 나와 관찰 기록에 남는다.",
 };
 
 function makeChargeKey() {
@@ -130,6 +139,15 @@ function isBlank(value) {
   return typeof value !== "string" || !value.trim();
 }
 
+function sentenceCount(value) {
+  if (typeof value !== "string") return 0;
+  return (value.match(/[.!?。！？…]+/g) || []).length;
+}
+
+function hasTwoSentences(value) {
+  return typeof value === "string" && value.trim().length >= 45 && sentenceCount(value) >= 2;
+}
+
 function stableHash(text = "") {
   let hash = 2166136261;
   for (let i = 0; i < text.length; i += 1) {
@@ -172,11 +190,26 @@ function ensureText(object, key, fallback) {
   if (object && isBlank(object[key])) object[key] = fallback;
 }
 
+function ensureDenseText(object, key, fallback) {
+  if (!object) return;
+  if (isBlank(object[key])) {
+    object[key] = fallback;
+    return;
+  }
+  if (!hasTwoSentences(object[key])) {
+    object[key] = `${String(object[key]).trim().replace(/[.!?。！？…]*$/, "")}. ${fallback.split(/[.!?。！？…]+/)[1]?.trim() || "그 반응은 기록지 밖으로 새어 나올 만큼 선명하게 남는다."}.`;
+  }
+}
+
 function ensureManagement(list, labels) {
   const current = Array.isArray(list) ? list : [];
   return labels.map((label, index) => ({
     label: current[index]?.label?.trim() || label,
-    note: current[index]?.note?.trim() || `${label} 항목에서 주기 반응이 관찰되며, 결과 확정 전 보정 기록으로 유지된다.`,
+    note: hasTwoSentences(current[index]?.note)
+      ? current[index].note.trim()
+      : current[index]?.note?.trim()
+      ? `${current[index].note.trim().replace(/[.!?。！？…]*$/, "")}. ${FALLBACK_COPY.management.split(/[.!?。！？…]+/)[1].trim()}.`
+      : `${label} 항목에서 주기 반응이 관찰되며, 결과 확정 전 보정 기록으로 유지된다. 체향 자극이 겹치면 버티던 습관이 역으로 반응을 증폭시킨다.`,
   }));
 }
 
@@ -211,28 +244,34 @@ function normalizeReport(rawReport, subjects, answer) {
   }
 
   if (report?.cycle_interaction) {
-    ensureText(report.cycle_interaction, "heat", FALLBACK_COPY.cycleHeat);
-    ensureText(report.cycle_interaction, "rut", FALLBACK_COPY.cycleRut);
-    ensureText(report.cycle_interaction, "together", FALLBACK_COPY.cycleTogether);
-    ensureText(report.cycle_interaction, "failure", FALLBACK_COPY.cycleFailure);
+    ensureDenseText(report.cycle_interaction, "heat", FALLBACK_COPY.cycleHeat);
+    ensureDenseText(report.cycle_interaction, "rut", FALLBACK_COPY.cycleRut);
+    ensureDenseText(report.cycle_interaction, "together", FALLBACK_COPY.cycleTogether);
+    ensureDenseText(report.cycle_interaction, "failure", FALLBACK_COPY.cycleFailure);
   }
 
   if (report?.prognosis) {
-    ensureText(report.prognosis, "phase_1", FALLBACK_COPY.phase1);
-    ensureText(report.prognosis, "phase_2", FALLBACK_COPY.phase2);
-    ensureText(report.prognosis, "phase_3", FALLBACK_COPY.phase3);
+    ensureDenseText(report.prognosis, "phase_1", FALLBACK_COPY.phase1);
+    ensureDenseText(report.prognosis, "phase_2", FALLBACK_COPY.phase2);
+    ensureDenseText(report.prognosis, "phase_3", FALLBACK_COPY.phase3);
   }
 
   if (report?.cycle_profile) {
-    ensureText(report.cycle_profile, "heat_cycle", "히트 주기 기록은 체온 상승과 호흡 간격 변화 중심으로 보정 기재된다.");
-    ensureText(report.cycle_profile, "rut_cycle", "러트 주기 기록은 발신향 압력과 통제력 저하 중심으로 보정 기재된다.");
-    ensureText(report.cycle_profile, "precursor", "발현 전조는 시선, 호흡, 체향 추적 행동에서 먼저 관찰된다.");
-    ensureText(report.cycle_profile, "suppression_failure", "억제가 깨지는 순간에는 가장 가까운 체향 단서에 반응이 집중된다.");
-    ensureText(report.cycle_profile, "nesting", "체향이 남은 물건을 기준으로 안정 구역을 재구성한다.");
-    ensureText(report.cycle_profile, "isolation_warning", "장시간 고립 시 판단 저하와 주기 반응 악화가 동반될 수 있다.");
+    ensureDenseText(report.cycle_profile, "heat_cycle", FALLBACK_COPY.soloHeat);
+    ensureDenseText(report.cycle_profile, "rut_cycle", FALLBACK_COPY.soloRut);
+    ensureDenseText(report.cycle_profile, "precursor", FALLBACK_COPY.soloPrecursor);
+    ensureDenseText(report.cycle_profile, "suppression_failure", FALLBACK_COPY.soloSuppression);
+    ensureDenseText(report.cycle_profile, "nesting", FALLBACK_COPY.soloNesting);
+    ensureDenseText(report.cycle_profile, "isolation_warning", FALLBACK_COPY.soloIsolation);
     report.cycle_profile.heat_management = ensureManagement(report.cycle_profile.heat_management, ["약물 반응", "파트너 유무", "혼자 버티는 법"]);
     report.cycle_profile.rut_management = ensureManagement(report.cycle_profile.rut_management, ["약물 반응", "파트너 유무", "혼자 버티는 법"]);
   }
+
+  if (report?.traits) {
+    ensureDenseText(report.traits, "note", FALLBACK_COPY.traitNote);
+  }
+
+  ensureDenseText(report, "examiner_note", FALLBACK_COPY.examiner);
 
   return report;
 }
@@ -246,17 +285,20 @@ function hasCompleteReport(report, solo) {
         !isBlank(report.subject.name) &&
         !isBlank(report.subject.role) &&
         !isBlank(report.subject.grade) &&
-        !isBlank(profile.heat_cycle) &&
-        !isBlank(profile.rut_cycle) &&
-        !isBlank(profile.precursor) &&
-        !isBlank(profile.suppression_failure) &&
+        hasTwoSentences(profile.heat_cycle) &&
+        hasTwoSentences(profile.rut_cycle) &&
+        hasTwoSentences(profile.precursor) &&
+        hasTwoSentences(profile.suppression_failure) &&
         Array.isArray(profile.heat_management) &&
         profile.heat_management.length >= 3 &&
+        profile.heat_management.every((item) => hasTwoSentences(item?.note)) &&
         Array.isArray(profile.rut_management) &&
         profile.rut_management.length >= 3 &&
-        !isBlank(prognosis.phase_1) &&
-        !isBlank(prognosis.phase_2) &&
-        !isBlank(prognosis.phase_3)
+        profile.rut_management.every((item) => hasTwoSentences(item?.note)) &&
+        hasTwoSentences(prognosis.phase_1) &&
+        hasTwoSentences(prognosis.phase_2) &&
+        hasTwoSentences(prognosis.phase_3) &&
+        hasTwoSentences(report.examiner_note)
     );
   }
 
@@ -267,13 +309,14 @@ function hasCompleteReport(report, solo) {
       report.subjects.length >= 2 &&
       report.cross_reaction &&
       report.imprint &&
-      !isBlank(cycle.heat) &&
-      !isBlank(cycle.rut) &&
-      !isBlank(cycle.together) &&
-      !isBlank(cycle.failure) &&
-      !isBlank(prognosis.phase_1) &&
-      !isBlank(prognosis.phase_2) &&
-      !isBlank(prognosis.phase_3)
+      hasTwoSentences(cycle.heat) &&
+      hasTwoSentences(cycle.rut) &&
+      hasTwoSentences(cycle.together) &&
+      hasTwoSentences(cycle.failure) &&
+      hasTwoSentences(prognosis.phase_1) &&
+      hasTwoSentences(prognosis.phase_2) &&
+      hasTwoSentences(prognosis.phase_3) &&
+      hasTwoSentences(report.examiner_note)
   );
 }
 
@@ -1076,6 +1119,7 @@ export default function GonadalReport() {
 - 야함의 핵심은 노출이 아니라 실패한 억제다. 약병, 잠긴 문, 젖은 손끝, 숨을 참는 입술, 옷깃에 남은 향 같은 증거로 상태를 증명한다.
 - 모든 긴 서술 필드는 반드시 2문장으로 쓴다. 첫 문장은 관찰된 행동, 둘째 문장은 그 행동이 드러내는 본능 반응이다.
 - 각 긴 서술 필드는 110~150자 사이를 목표로 한다. 사용자가 볼 때 최소 2줄로 읽히는 밀도를 유지한다.
+- 각 긴 서술 필드에는 마침표가 최소 2개 있어야 한다. 한 문장으로 끝나는 압축 문구, 제목 같은 짧은 단문, 요약 한 줄은 실패다.
 
 [관계성 결 분기: 순애 / 혐관 / 비즈니스]
 - 순애: 이성적 저항 없이 상대의 숨결 하나에 뇌수까지 녹아내린 맹목성. 기꺼이 다리를 무너뜨리고 제 발로 목줄을 쥐여주며, 얽히는 타액과 체향에 완벽히 종속된 끈적한 열병.
@@ -1153,7 +1197,7 @@ cycle_profile (단일 꼴포인트):
 - 모든 level은 1~5, 모든 percent 계열 숫자는 0~100 정수로 쓴다.
 - 모든 문자열 필드는 빈 문자열로 두지 마라.
 - cycle_interaction, prognosis, cycle_profile, imprint, imprint_loss, scent_note, caution, examiner_note의 긴 문장은 반드시 2문장으로 쓴다.
-- 한 문장짜리로 끝난 필드는 실패다. 자동 재시도 대상이다.
+- 한 문장짜리로 끝난 필드는 실패다. 각 긴 서술 필드의 마침표가 2개 미만이면 자동 재시도 대상이다.
 - JSON 문자열 내부에 실제 줄바꿈을 넣지 마라. 줄바꿈이 필요하면 \\n으로 이스케이프한다.
 - JSON 키 이름은 출력 스키마와 철자까지 완전히 같아야 한다. 추가 키를 만들지 마라.
 
@@ -1228,13 +1272,13 @@ ${responseSchemaForMode(solo)}`;
         const retrySuffix =
           attempt === 1
             ? ""
-            : `\n\n[자동 재시도 ${attempt}/${MAX_GENERATION_ATTEMPTS}]\n이전 응답은 JSON 형식 또는 필수 항목 검증에 실패했다. 이번에는 각 긴 서술을 한 문장으로 줄이고, 따옴표가 필요한 표현을 피하며, 반드시 유효한 JSON 하나만 출력한다.`;
+            : `\n\n[자동 재시도 ${attempt}/${MAX_GENERATION_ATTEMPTS}]\n이전 응답은 JSON 형식 또는 필수 항목 검증에 실패했다. 이번에는 각 긴 서술을 반드시 2문장으로 쓰고, 각 필드마다 마침표가 2개 이상 보이게 하라. 따옴표가 필요한 표현을 피하며, 반드시 유효한 JSON 하나만 출력한다.`;
         const generated = await callReportEndpoint({
           requestParts: buildRequestParts(`${prompt}${retrySuffix}`),
           phase: attempt === 1 ? "generate" : `regenerate_${attempt}`,
           ms: GEMINI_TIMEOUT_MS,
           generationConfig: {
-            maxOutputTokens: attempt === 1 ? 5200 : 4400,
+            maxOutputTokens: attempt === 1 ? 5200 : 5000,
             temperature: attempt === 1 ? 0.66 : 0.38,
             topP: attempt === 1 ? 0.86 : 0.55,
             responseMimeType: "application/json",
@@ -1271,6 +1315,7 @@ ${responseSchemaForMode(solo)}`;
 - 누락된 필드는 빈 값으로 두지 말고 문맥상 가장 가까운 짧은 값으로 채워라.
 - role은 "알파" 또는 "오메가"만, grade는 "극우성" "우성" "열성" "극열성" 중 하나만 쓴다.
 - site_code는 NP, CL, WR, SC, ME, TH, RB, AN, PL, HL 중 하나만 쓴다.
+- 긴 서술 필드는 모두 2문장으로 유지한다. 한 문장짜리 값을 발견하면 같은 의미를 보존한 채 두 번째 관찰 문장을 추가한다.
 - JSON 문자열 내부 실제 줄바꿈은 \\n으로 이스케이프한다.
 
 [스키마]
