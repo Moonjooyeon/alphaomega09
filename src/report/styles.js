@@ -77,6 +77,12 @@ export const CSS = `
 .gm-qrow p{margin:0;font-size:12.5px;}
 .gm-qrow p b{color:var(--ink2);font-size:9px;letter-spacing:.18em;margin-right:9px;font-weight:400;}
 .gm-qrow .gm-row{padding:8px 0 0;}
+.gm-focus{width:100%;margin-top:10px;min-height:74px;resize:vertical;border:1px solid var(--rule);
+      background:linear-gradient(var(--form),var(--form)) padding-box,
+      repeating-linear-gradient(transparent 0 25px,var(--grid) 25px 26px);
+      padding:10px 11px;font:inherit;font-size:12.5px;line-height:1.8;color:var(--ink);outline:none;border-radius:0;}
+.gm-focus:focus{border-color:var(--assay);box-shadow:0 0 0 1px var(--assay);}
+.gm-count{display:block;text-align:right;margin-top:5px;font-size:9px;color:var(--ink2);letter-spacing:.12em;}
 .gm-row{display:flex;align-items:center;flex-wrap:wrap;gap:5px 15px;padding:12px 0 3px;}
 .gm-row>b{font-size:9px;letter-spacing:.2em;color:var(--ink2);font-weight:400;flex:0 0 34px;}
 .gm-chk{display:inline-flex;align-items:center;gap:6px;background:transparent;border:none;
