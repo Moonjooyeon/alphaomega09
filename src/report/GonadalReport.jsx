@@ -37,11 +37,14 @@ import { localMockReport } from "./mockReport.js";
    ───────────────────────────────────────────── */
 
 const AUTH_TOKEN_STORAGE = "ao_auth_token";
-const GEMINI_TIMEOUT_MS = 90000;
+const GEMINI_TIMEOUT_MS = 70000;
 const PASS_TIMEOUT_MS = 15000;
+const REPAIR_TIMEOUT_MS = 25000;
+const MAX_GENERATION_ATTEMPTS = 3;
 const MAX_EXPORT_CANVAS_SIDE = 8192;
 const SITE_CODES = Object.keys(SITES);
 const NON_DEFAULT_SITE_CODES = SITE_CODES.filter((code) => code !== "NP");
+const GENERIC_SITE_CODES = SITE_CODES.filter((code) => !["NP", "CL"].includes(code));
 const SITE_ALIASES = [
   [/NECK|목덜미|뒷목/i, "NP"],
   [/CLAVICLE|쇄골/i, "CL"],
@@ -54,6 +57,18 @@ const SITE_ALIASES = [
   [/PALM|손바닥/i, "PL"],
   [/HAIRLINE|머리카락|목선/i, "HL"],
 ];
+const SITE_EVIDENCE = {
+  NP: /목덜미|뒷목|목선|목 뒤|목 뒤쪽|neck/i,
+  CL: /쇄골|빗장뼈|clavicle/i,
+  WR: /손목|맥박|wrist/i,
+  SC: /견갑|등|어깨뼈|scapula/i,
+  ME: /귀 뒤|귓불|귀밑|ear/i,
+  TH: /가슴|심장|흉부|heart|chest/i,
+  RB: /옆구리|갈비|늑골|rib/i,
+  AN: /발목|복사뼈|ankle/i,
+  PL: /손바닥|손금|palm/i,
+  HL: /헤어라인|머리카락|목선|hairline/i,
+};
 const TEXT_FIXES = [
   [/숨숨오감/g, "숨과 오감"],
   [/숨숨/g, "숨"],
@@ -147,10 +162,10 @@ function pickVariedSiteCode(subjects, answer, currentCode, report) {
     report?.imprint?.note,
   ].join(" ");
   const normalized = normalizeSiteCode(currentCode);
-  if (SITES[normalized] && normalized !== "NP") return normalized;
-  if (normalized === "NP" && /목덜미|뒷목|목선|neck/i.test(evidence)) return normalized;
-  const pool = normalized === "NP" ? NON_DEFAULT_SITE_CODES : SITE_CODES;
-  return pool[stableHash(evidence) % pool.length] || "WR";
+  if (SITES[normalized] && SITE_EVIDENCE[normalized]?.test(evidence)) return normalized;
+  if (SITES[normalized] && !["NP", "CL"].includes(normalized)) return normalized;
+  const pool = GENERIC_SITE_CODES.length ? GENERIC_SITE_CODES : NON_DEFAULT_SITE_CODES;
+  return pool[stableHash(`${evidence}:${normalized}`) % pool.length] || "WR";
 }
 
 function ensureText(object, key, fallback) {
@@ -275,6 +290,79 @@ function withTimeout(promise, ms, message) {
   ]);
 }
 
+function escapeJsonStringControls(text) {
+  let output = "";
+  let inString = false;
+  let escaped = false;
+  for (const char of text) {
+    if (escaped) {
+      output += char;
+      escaped = false;
+      continue;
+    }
+    if (char === "\\") {
+      output += char;
+      escaped = true;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      output += char;
+      continue;
+    }
+    if (inString && char === "\n") {
+      output += "\\n";
+      continue;
+    }
+    if (inString && char === "\r") continue;
+    if (inString && char === "\t") {
+      output += "\\t";
+      continue;
+    }
+    output += char;
+  }
+  return output;
+}
+
+function parseReportJsonPayload(raw) {
+  const clean = String(raw || "").replace(/```json|```/g, "").trim();
+  const a = clean.indexOf("{");
+  const b = clean.lastIndexOf("}");
+  if (a < 0 || b <= a) {
+    return { ok: false, reason: "NO_JSON", candidate: clean };
+  }
+
+  const candidate = clean.slice(a, b + 1);
+  const variants = [
+    candidate,
+    candidate.replace(/,\s*([}\]])/g, "$1"),
+    escapeJsonStringControls(candidate).replace(/,\s*([}\]])/g, "$1"),
+  ];
+
+  let lastError = null;
+  for (const variant of variants) {
+    try {
+      return { ok: true, value: JSON.parse(variant), candidate: variant };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  return { ok: false, reason: "INVALID_JSON", candidate, error: lastError };
+}
+
+function extractGeminiText(body) {
+  return (body?.candidates || [])
+    .flatMap((candidate) => candidate.content?.parts || [])
+    .map((part) => part.text || "")
+    .join("");
+}
+
+function responseSchemaForMode(solo) {
+  return solo
+    ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":{"family":"","top":"","heart":"","base":"","intensity":0,"persistence":"","diffusion":"","trigger":"","scent_code":""},"evidence":["",""],"remarks":""},"codename":"","rarity":{"total":0,"count":0},"counterfactual":"","warning":"","oneline":"","traits":{"metrics":[{"label":"신호 발신 강도","level":0},{"label":"감응 역치","level":0},{"label":"자기 억제력","level":0},{"label":"유대 형성 경향","level":0},{"label":"각인 수용성","level":0}],"note":""},"imprint_history":{"status":"","note":""},"cycle_profile":{"heat_cycle":"","rut_cycle":"","precursor":"","suppression_failure":"","heat_management":[{"label":"","note":""},{"label":"","note":""},{"label":"","note":""}],"rut_management":[{"label":"","note":""},{"label":"","note":""},{"label":"","note":""}],"nesting":"","isolation_warning":""},"prognosis":{"phase_1":"","phase_2":"","phase_3":""},"examiner_note":""}`
+    : `{"subjects":[{"name":"","role":"","grade":"","confidence":0,"pheromone":{"family":"","top":"","heart":"","base":"","intensity":0,"persistence":"","diffusion":"","trigger":"","scent_code":""},"evidence":["",""],"remarks":""}],"codename":"","rarity":{"total":0,"count":0},"counterfactual":"","warning":"","oneline":"","cross_reaction":{"type_name":"","compatibility":0,"scent_sync":0,"scent_note":"","metrics":[{"label":"유대 형성 속도","level":0},{"label":"신호 간섭도","level":0},{"label":"상호 억제 가능성","level":0},{"label":"분리 내성","level":0},{"label":"장기 안정성","level":0}],"caution":""},"imprint":{"from":"","to":"","site_code":"","fixation":"","stability":0,"rationale":"","note":""},"imprint_loss":{"a":"","b":"","note":""},"cycle_interaction":{"heat":"","rut":"","together":"","failure":""},"prognosis":{"phase_1":"","phase_2":"","phase_3":""},"examiner_note":""}`;
+}
+
 async function apiFetch(path, { token = "", ...options } = {}) {
   const res = await fetch(`${API_BASE_ENDPOINT}${path}`, {
     ...options,
@@ -391,6 +479,62 @@ function ImageCropModal({ crop, onChange, onCancel, onApply }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function makeImageEvidence({ solo, imgMode, subjects, pair }) {
+  const joint = imgMode === "페어 1장" && pair?.img;
+  const items = joint
+    ? [{ label: "동시 촬영 검체", name: "2개체 페어 이미지", img: pair.img, mime: pair.mime, adj: { ...(pair.adj || DEF_ADJ) } }]
+    : subjects
+        .slice(0, solo ? 1 : 2)
+        .map((subject, index) => ({
+          label: solo ? "대상 검체" : `개체 ${index === 0 ? "A" : "B"} 검체`,
+          name: subject.name || (solo ? "대상" : `개체 ${index === 0 ? "A" : "B"}`),
+          img: subject.img,
+          mime: subject.mime,
+          adj: { ...(subject.adj || DEF_ADJ) },
+        }))
+        .filter((item) => item.img);
+
+  return {
+    joint,
+    caption: joint ? "제출 검체 참조 이미지 · 2개체 동시 촬영" : "제출 검체 참조 이미지",
+    items,
+  };
+}
+
+function ReportSpecimens({ evidence, solo, imgMode, subjects, pair }) {
+  const fallback = makeImageEvidence({ solo, imgMode, subjects, pair });
+  const finalEvidence = evidence?.items?.length ? evidence : fallback;
+  const { joint, items, caption } = finalEvidence;
+
+  if (!items.length) return null;
+
+  return (
+    <figure className={`gm-specimens ${joint ? "gm-specimens-joint" : ""}`}>
+      <div className="gm-specimens-head">
+        <b>IMAGE EVIDENCE</b>
+        <span>{caption}</span>
+      </div>
+      <div className="gm-specimens-grid">
+        {items.map((item, index) => (
+          <div className="gm-specimen" key={`${item.label}-${index}`}>
+            <div className="gm-specimen-img">
+              <img
+                src={`data:${item.mime || "image/jpeg"};base64,${item.img}`}
+                alt=""
+                style={{ transform: imageTransform(item.adj || DEF_ADJ) }}
+              />
+            </div>
+            <div className="gm-specimen-cap">
+              <span>{item.label}</span>
+              <b>{item.name}</b>
+            </div>
+          </div>
+        ))}
+      </div>
+    </figure>
   );
 }
 
@@ -808,7 +952,7 @@ export default function GonadalReport() {
       .replace("A→B", `${nm(0, "A")} → ${nm(1, "B")}`)
       .replace("B→A", `${nm(1, "B")} → ${nm(0, "A")}`);
 
-  const resetForRetry = () => {
+  const backToForm = () => {
     activeController.current?.abort();
     requestSeq.current += 1;
     setStage("input");
@@ -844,6 +988,7 @@ export default function GonadalReport() {
     setData(null);
     setErr("");
     setReject("");
+    const imageEvidence = makeImageEvidence({ solo, imgMode, subjects: subj, pair });
 
     let passes = null;
     try {
@@ -883,35 +1028,39 @@ export default function GonadalReport() {
 - prognosis는 예후표가 아니라 "이 관계/개체가 어떤 임계점을 넘어 생리적으로 폭발하는지"에 대한 고밀도 관찰란이다.
 - 한국어 문장은 짧게 쓴다. 한 문장에 판단을 두 개 이상 겹치지 않는다.
 
-[관계성 분기점: 순애 vs 회피] ★매우 중요★
-- 감정 문항이 '순애(서로 확신함/전부임)' 방향일 경우: 이성적인 저항이나 거부, 혐오 묘사를 절대 쓰지 마라. 대신 서로를 향한 애정과 갈구가 너무 짙어 본능에 자발적으로 녹아내리는 맹목성, 페로몬 동조화로 인해 통제력을 잃고 서로에게 완벽히 집어삼켜지는 농밀하고 끈적한 텐션으로 서술한다. "제 발로 목줄을 쥐여주는", "상대의 페로몬 없이는 호흡조차 버거워하는" 식의 묘사를 쓴다.
-- 감정 문항이 '회피/부정' 방향일 경우: 이때만 이성과 본능의 마찰을 묘사한다. 머리로는 거부하고 밀어내려 치사량의 억제제를 삼키면서도, 몸은 페로몬에 강제로 굴복하여 덜덜 떨며 매달리게 되는 비참하고 배덕적인 텐션을 강조한다.
+[관계성 분기점: 순애 vs 회피(혐관)] ★매우 중요★
+- 관계 문진표의 "관계 결" 답변을 최우선으로 따른다. "순애", "순애인데 숨김"은 순애 방향이다. "혐관", "혐관인데 못 놓음"은 회피/부정(혐관) 방향이다. "겉으론 비즈니스"는 행동은 절제하되 동선과 소지품에서 새는 쪽으로 쓴다.
+- 각 개체의 "이성적 태도"와 "본능적 반응"이 다르면 반드시 그 모순을 핵심 꼴포인트로 쓴다. 예: 철저한 무관심 + 맹목적 발정, 다정함 + 파괴적 소유욕, 노골적 혐오 + 강제적 굴복.
+- A→B와 B→A의 태도/반응이 다르면 비대칭 관계로 쓴다. 이성적 태도는 말투와 거리 조절에, 본능적 반응은 호흡·동선·소지품·체향 추적 행동에 반영한다.
+- 순애(서로 확신함/전부임) 방향: 이성적인 저항이나 거부, 혐오 묘사를 절대 쓰지 마라. 대신 서로를 향한 애정과 갈구가 너무 짙어 본능에 자발적으로 녹아내리는 맹목성, 페로몬 동조화로 인해 통제력을 잃고 서로에게 완벽히 집어삼켜지는 농밀하고 끈적한 텐션으로 서술한다.
+- 회피/부정(혐관) 방향: 이때만 이성과 본능의 마찰을 묘사한다. 머리로는 거부하고 밀어내려 치사량의 억제제를 삼키면서도, 몸은 페로몬에 강제로 굴복하여 덜덜 떨며 매달리게 되는 비참하고 배덕적인 텐션을 강조한다.
 
 [성향 기반 분기점: 통제 vs 쾌락] ★매우 중요★
-- 성향(문란수/공, 금욕수/공 등)을 프로필이나 이미지에서 유추하여 서술에 반영한다.
 - 금욕적/통제적 성향: 이성으로 억누르다 무너질 때의 극단적인 수치심과 폭력성을 강조한다. 억제제로 망가진 신경, 스스로에게 고통(자해)을 주며 버티다 끝내 발정열에 굴복하는 비참함을 묘사한다.
-- 쾌락주의/문란 성향: 억제보다는 자극 자체에 무방비하게 노출되거나, 쾌락을 좇으면서도 특정 상대의 페로몬 앞에서는 무력하게 종속되어 버리는(또는 독점당하는) 아이러니를 강조한다. "여유로운 척 기만하지만 속은 이미 다 녹아내린", "쾌락을 통제하려다 역으로 지배당하는" 식의 묘사를 쓴다.
+- 쾌락주의/문란 성향: 여유로운 척 기만하지만, 특정 상대의 페로몬 앞에서는 무력하게 종속되어 버리는(또는 독점당하는) 아이러니와 자기혐오를 묘사한다.
 
-[Flash-Lite 보정 / 서사적 스냅샷 규칙 - BL 코드 강화]
-- 알파의 절대적 우위 및 오메가의 일방적 굴복 구도를 탈피하라. 알파 역시 오메가의 페로몬에 완전히 정신이 나가 통제력을 상실하고, 짐승처럼 이성을 잃고 매달리거나 발정하는 양상(러트 폭주)을 동등하게 서술하여 상호 파괴적/맹목적 텐션을 만든다.
-- 단일 개체(솔로) 결과는 "가장 위태롭게 억눌린 시한폭탄" 같은 고독한 붕괴를 보여주어야 한다.
-  - 알파: 약물로도 억누르지 못하는 지배욕과 발신향의 폭주, 환상통에 시달려 방 안을 부수면서도 상대의 물건(또는 환각) 하나에만 매달리는 미친 텐션.
-  - 오메가: 파트너 없이 홀로 발정열을 견디며 망가지는 신경증적 고립, 타인의 페로몬에 대한 혐오와 특정 상대의 향을 향한 지독한 갈증이 부딪히는 수치심.
-- 각 긴 서술 필드는 가능하면 물건 1개, 동선 1개, 들키는 신체 반응 1개 중 최소 두 가지를 포함하여 구체적으로 묘사한다. (예: 짓씹은 입술, 타액이 묻은 시트, 덜덜 떨리는 허벅지, 억눌린 신음이 밴 넥타이 등)
-- 감정어를 직접 쓰지 마라. 사랑, 혐오 같은 단어 대신, 상대의 체향이 묻은 겉옷에 얼굴을 파묻는 강박(변질된 둥지)이나 닿지 못할 때 겪는 환상통(피가 나도록 긁는 행위 등) 같은 구체적이고 병적인 행동으로 감정을 증명한다.
-- 약물로 간신히 누른 이성(혹은 참을성)이 상대의 작은 자극 하나에 순식간에 약효가 박살나며 그 자리에서 억제가 풀려버리는 '강제 사이클 유도'의 아찔함을 상황에 맞게 변주하여 포함한다.
+[각인(Imprint)의 BL적 해석과 텐션] ★매우 중요★
+- 강제(fixation: 강제): 혐관에서 주로 발생. 이성으로는 상대를 찢어 죽일 듯 혐오하나, 살점이 뜯길 듯 물어뜯긴 각인 부위 때문에 육체가 완벽히 종속되어 상대의 페로몬에 비참하게 발정하고 마는 '육체의 배신'을 묘사한다.
+- 상흔(fixation: 상흔): 알파x알파, 오메가x오메가의 경우 생물학적 각인이 불가하나, 미칠 듯한 독점욕으로 기어이 연한 살갗을 물어뜯어 남긴 흉터다. 상처가 아물지 않고 열감을 내는 영구적 환상통과, 만날 때마다 같은 자리를 씹어 덧그리는 집착을 쓴다.
+- 거부(fixation: 거부): 각인을 시도했으나 혐오감에 밀어내어 반쪽짜리가 된 상태다. 흉터 근처에 숨결만 닿아도 발작적으로 몸을 떨며 저항하면서도 기묘한 쾌감에 무너지는 자기혐오를 쓴다.
+- 완전/표층: 순애이거나 일반적인 각인일 경우 사용한다.
+- 각인 부위는 가장 취약한 통제 스위치다. 닿지 않으면 숨이 막혀 죽을 듯한 금단증상을 겪고, 타의로 닿았을 땐 수치심 속에 다리가 풀리며 맹목적으로 굴복하는 묘사를 반드시 포함한다.
 
-[분류 체계] 축이 두 개다. 반드시 둘 다 판정한다.
+[Flash-Lite 보정 / 서사적 스냅샷 규칙]
+- 알파의 절대적 우위 및 오메가의 일방적 굴복 구도를 탈피하라. 알파 역시 오메가의 페로몬에 완전히 정신이 나가 통제력을 상실하고, 짐승처럼 이성을 잃고 발정하는 양상을 동등하게 서술한다.
+- 감정어를 직접 쓰지 마라. 사랑, 혐오 같은 단어 대신, 체향이 묻은 겉옷에 얼굴을 파묻는 강박이나 환상통으로 피가 나도록 피부를 긁는 행위 등 구체적이고 병적인 행동으로 상태를 증명한다.
+- 약물로 간신히 누른 이성이 상대의 숨결 한 번, 자극 한 번에 순식간에 약효가 박살나며 그 자리에서 억제가 풀려버리는 '강제 사이클 유도'의 아찔함을 상황에 맞게 변주한다.
+
+[분류 체계 및 판정 원칙]
 - 판정(role): 알파 / 오메가
 - 등급(grade): 극우성 / 우성 / 열성 / 극열성.
-
-[판정 원칙]
-1. 모든 판정에는 근거가 있어야 한다. 근거란에는 제출된 프로필의 표현을 짧게 그대로 인용한다.
-2. 페로몬은 향수처럼 기술한다. top(첫인상), heart(체온에 데워져 살갗에서 농염하게 끓어오르는 향), base(침구에 짙게 배어 이성을 마비시키는 잔향)를 각각 다른 구체적 사물로 적는다. trigger에는 이 향이 통제를 벗어나 폭발하는 순간을 적는다.
-3. 각인은 방향 → 부위 → 정착도 순으로 판정한다. 각인 부위는 이성이 가장 먼저 붕괴되는 약점이자 애착의 중심이다. 왜 그 부위의 살갗에 닿지 못하면 환상통에 시달리고, 닿았을 땐 자기도 모르게 집착하게 되는지를 imprint.rationale 또는 imprint.note에 서사적으로 연결한다.
+- 모든 판정에는 근거가 있어야 하며, 제출된 프로필을 짧게 인용한다.
+- 페로몬: top(첫인상), heart(살갗에서 끓어오르는 향), base(침구에 배어 이성을 마비시키는 잔향)를 구체적 사물로 적고, trigger에는 이 향이 통제를 벗어나 폭발하는 기폭제를 적는다.
+- 각인은 방향 → 부위 → 정착도(미형성/표층/완전/강제/상흔/거부) 순으로 판정한다.
    - 각인 부위는 자동으로 목덜미를 고르지 마라. 제출 자료의 성향과 관계 역학에 따라 NP(목덜미), CL(쇄골 아래), WR(손목 안쪽), SC(견갑골 사이), ME(귀 뒤), TH(왼쪽 가슴), RB(옆구리), AN(발목 안쪽), PL(손바닥), HL(뒷목 머리카락 선) 전체에서 다양하게 선택한다.
-4. 문체는 임상 기록이다. 감정어 없이 관찰된 사실과 수치로 기술하되 건조한 활자 뒤로 노골적인 텐션이 묻어나야 한다. 판정 절차나 입력 조건을 언급하는 메타 발언은 절대 금지한다.
-5. examiner_note에서만 검사자 개인의 아찔함이 새어나온 듯한 두 문장을 허용한다.
+   - 목덜미(NP)와 쇄골(CL)은 제출 자료에 직접적인 목/쇄골 단서가 있을 때만 우선한다. 단서가 없으면 WR, SC, ME, TH, RB, AN, PL, HL 중에서 성향에 맞춰 고른다.
+- 문체는 임상 기록이다. 감정어 없이 관찰된 사실로 기술하되 노골적인 텐션이 묻어나야 한다. 메타 발언은 절대 금지한다.
+- examiner_note에서만 검사자 개인의 아찔함이 새어나온 듯한 두 문장을 허용한다.
 
 [각 항목별 서술 분리 가이드 - 중복 방지]
 * cycle_interaction (히트·러트 상호반응): 각 필드의 내용이 절대 겹치지 않게 작성하라.
@@ -958,20 +1107,20 @@ ${solo ? `
 traits.metrics: 신호 발신 강도 / 감응 역치 / 자기 억제력 / 유대 형성 경향 / 각인 수용성.
 codename은 이 개체의 분류 명칭, counterfactual은 다른 판정을 받았을 경우 겪었을 파국.
 prognosis (발현 경과):
-- phase_1 (평시의 억제/기만): 성향에 따라 억제제로 페로몬을 짓누르거나 여유롭게 기만하는 위태로운 모습.
-- phase_2 (주기 도래/임계점): 약물이 말을 듣지 않거나 쾌락을 통제하지 못해 열에 들뜬 몸이 통제를 잃어가는 징후.
-- phase_3 (고립된 붕괴): 곁에 아무도 없는 상태에서 본능에 완전히 잡아먹혀 홀로 망가지는 잔류 패턴.
-cycle_profile (개체 프로필 핵심 - 꼴포인트 집약):
+- phase_1: 평시의 위태로운 억제나 기만.
+- phase_2: 약물이 무력화되며 통제를 잃어가는 징후.
+- phase_3: 곁에 아무도 없는 상태에서 본능에 잡아먹혀 홀로 무너지는 고립된 붕괴.
+cycle_profile (개체 프로필 핵심):
 - (위의 [각 항목별 서술 분리 가이드]를 철저히 준수할 것)
 ` : `
-[검사 구분] 페어 검사다. 서로의 감정 상태(순애 vs 회피)와 성향(통제 vs 쾌락)에 따라 자발적인 녹아내림 또는 생리적인 강제 굴복의 텐션을 변주하여 폭발시킨다.
+[검사 구분] 페어 검사다. 관계성(순애/혐관), 성향, 각인 상태(강제/상흔 등)에 따라 자발적 녹아내림 또는 생리적 강제 굴복의 텐션을 변주하여 폭발시킨다.
 - cross_reaction.type_name: 두 사람의 관계적 장력.
-- cross_reaction.scent_note: 두 향이 살갗의 열기와 만나 농염하게 끓어오르는 결과물.
+- cross_reaction.scent_note: 두 향이 농염하게 끓어오르는 결과물.
 - cross_reaction.caution: 관계성에 기반한 임상적 경고문.
 - imprint.rationale: 각인 방향의 이유를 무의식적 본능과 신체 반응으로 연결.
-- imprint.note: 닿았을 때의 애착 혹은 떨어졌을 때의 지독한 환상통과 의존성 묘사.
-- imprint_loss: 각인 상대 사망 시의 금단증상과 붕괴 (환각, 이성 상실 등).
-- cycle_interaction: (위의 [각 항목별 서술 분리 가이드]를 철저히 준수하여 중복 서술을 막을 것)
+- imprint.note: 닿았을 때의 애착(또는 수치심)과 떨어졌을 때의 지독한 환상통 묘사.
+- imprint_loss: 각인 상대 사망 시의 금단증상과 환각.
+- cycle_interaction: (위의 [각 항목별 서술 분리 가이드]를 철저히 준수할 것)
 - prognosis: (위의 [각 항목별 서술 분리 가이드]를 철저히 준수할 것)
 - oneline: 이 관계의 본질을 관통하는 가장 섹슈얼하고 강렬한 한 줄.
 `}
@@ -986,110 +1135,180 @@ cycle_profile (개체 프로필 핵심 - 꼴포인트 집약):
 - role은 "알파" 또는 "오메가"만, grade는 "극우성" "우성" "열성" "극열성" 중 하나만 쓴다.
 - 모든 level은 1~5, 모든 percent 계열 숫자는 0~100 정수로 쓴다.
 - 모든 문자열 필드는 빈 문자열로 두지 마라.
+- JSON 문자열 내부에 실제 줄바꿈을 넣지 마라. 줄바꿈이 필요하면 \\n으로 이스케이프한다.
 - cycle_interaction의 heat/rut/together/failure와 cycle_profile의 heat_cycle/rut_cycle/precursor/suppression_failure/management/nesting/isolation_warning은 절대 비우지 마라.
 - JSON 키 이름은 출력 스키마와 철자까지 완전히 같아야 한다. 추가 키를 만들지 마라.
 
 [출력] 어떤 경우에도 아래 JSON만 출력한다. 코드펜스·설명·서두·반려 사유를 붙이지 마라.
-${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":{"family":"","top":"","heart":"","base":"","intensity":0,"persistence":"","diffusion":"","trigger":"","scent_code":""},"evidence":["",""],"remarks":""},"codename":"","rarity":{"total":0,"count":0},"counterfactual":"","warning":"","oneline":"","traits":{"metrics":[{"label":"신호 발신 강도","level":0},{"label":"감응 역치","level":0},{"label":"자기 억제력","level":0},{"label":"유대 형성 경향","level":0},{"label":"각인 수용성","level":0}],"note":""},"imprint_history":{"status":"","note":""},"cycle_profile":{"heat_cycle":"","rut_cycle":"","precursor":"","suppression_failure":"","heat_management":[{"label":"","note":""},{"label":"","note":""},{"label":"","note":""}],"rut_management":[{"label":"","note":""},{"label":"","note":""},{"label":"","note":""}],"nesting":"","isolation_warning":""},"prognosis":{"phase_1":"","phase_2":"","phase_3":""},"examiner_note":""}` : `{"subjects":[{"name":"","role":"","grade":"","confidence":0,"pheromone":{"family":"","top":"","heart":"","base":"","intensity":0,"persistence":"","diffusion":"","trigger":"","scent_code":""},"evidence":["",""],"remarks":""}],"codename":"","rarity":{"total":0,"count":0},"counterfactual":"","warning":"","oneline":"","cross_reaction":{"type_name":"","compatibility":0,"scent_sync":0,"scent_note":"","metrics":[{"label":"유대 형성 속도","level":0},{"label":"신호 간섭도","level":0},{"label":"상호 억제 가능성","level":0},{"label":"분리 내성","level":0},{"label":"장기 안정성","level":0}],"caution":""},"imprint":{"from":"","to":"","site_code":"","fixation":"","stability":0,"rationale":"","note":""},"imprint_loss":{"a":"","b":"","note":""},"cycle_interaction":{"heat":"","rut":"","together":"","failure":""},"prognosis":{"phase_1":"","phase_2":"","phase_3":""},"examiner_note":""}`}`;
+${responseSchemaForMode(solo)}`;
 
-    const parts = [{ text: prompt }];
-    if (imgMode === "개별") {
-      subj.forEach((s) => {
-        if (s.img)
-          parts.push({
-            inline_data: { mime_type: s.mime || "image/jpeg", data: s.img },
-          });
-      });
-    } else if (imgMode === "페어 1장" && pair.img) {
-      parts.push({
-        inline_data: { mime_type: pair.mime || "image/jpeg", data: pair.img },
-      });
-    }
+    const buildRequestParts = (text) => {
+      const requestParts = [{ text }];
+      if (imgMode === "개별") {
+        subj.forEach((s) => {
+          if (s.img)
+            requestParts.push({
+              inline_data: { mime_type: s.mime || "image/jpeg", data: s.img },
+            });
+        });
+      } else if (imgMode === "페어 1장" && pair.img) {
+        requestParts.push({
+          inline_data: { mime_type: pair.mime || "image/jpeg", data: pair.img },
+        });
+      }
+      return requestParts;
+    };
+
+    const callReportEndpoint = async ({ requestParts, phase, generationConfig, ms }) => {
+      const controller = new AbortController();
+      const localTimeout = setTimeout(() => controller.abort(), ms);
+      activeController.current = controller;
+      timeout = localTimeout;
+      try {
+        const res = await fetch(GEMINI_PROXY_ENDPOINT, {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
+            reportMode: solo ? "solo" : "pair",
+            phase,
+            contents: [{ role: "user", parts: requestParts }],
+            generationConfig,
+          }),
+        });
+        if (requestSeq.current !== runId) return;
+
+        const responseText = await res.text();
+        if (requestSeq.current !== runId) return;
+        let j;
+        try {
+          j = JSON.parse(responseText);
+        } catch {
+          const detail = responseText.replace(/\s+/g, " ").trim().slice(0, 180);
+          throw new Error(`서버 응답을 읽지 못했습니다 (HTTP ${res.status})${detail ? ` — ${detail}` : ""}`);
+        }
+        return { res, j };
+      } finally {
+        clearTimeout(localTimeout);
+        if (timeout === localTimeout) timeout = null;
+        if (activeController.current === controller) activeController.current = null;
+      }
+    };
 
     try {
       const chargeKey = makeChargeKey();
-      const controller = new AbortController();
-      activeController.current = controller;
-      timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
-      const res = await fetch(GEMINI_PROXY_ENDPOINT, {
-        method: "POST",
-        signal: controller.signal,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          reportMode: solo ? "solo" : "pair",
-          phase: "generate",
-          contents: [{ role: "user", parts }],
+      let parsed = null;
+      let chargeSessionId = "";
+      let lastRaw = "";
+      let lastError = "결과가 완성되지 않아 이용권은 차감되지 않았습니다.";
+
+      for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt += 1) {
+        if (requestSeq.current !== runId) return;
+        const retrySuffix =
+          attempt === 1
+            ? ""
+            : `\n\n[자동 재시도 ${attempt}/${MAX_GENERATION_ATTEMPTS}]\n이전 응답은 JSON 형식 또는 필수 항목 검증에 실패했다. 이번에는 각 긴 서술을 한 문장으로 줄이고, 따옴표가 필요한 표현을 피하며, 반드시 유효한 JSON 하나만 출력한다.`;
+        const generated = await callReportEndpoint({
+          requestParts: buildRequestParts(`${prompt}${retrySuffix}`),
+          phase: attempt === 1 ? "generate" : `regenerate_${attempt}`,
+          ms: GEMINI_TIMEOUT_MS,
           generationConfig: {
-            maxOutputTokens: 5200,
-            temperature: 0.66,
-            topP: 0.86,
+            maxOutputTokens: attempt === 1 ? 5200 : 4400,
+            temperature: attempt === 1 ? 0.66 : 0.38,
+            topP: attempt === 1 ? 0.86 : 0.55,
             responseMimeType: "application/json",
           },
-        }),
-      });
-      clearTimeout(timeout);
-      if (requestSeq.current !== runId) return;
+        });
+        if (!generated) return;
+        const { res, j } = generated;
 
-      const responseText = await res.text();
-      if (requestSeq.current !== runId) return;
-      let j;
-      try {
-        j = JSON.parse(responseText);
-      } catch {
-        const detail = responseText.replace(/\s+/g, " ").trim().slice(0, 180);
-        return fail(`서버 응답을 읽지 못했습니다 (HTTP ${res.status})${detail ? ` — ${detail}` : ""}`);
-      }
-
-      if (!res.ok || j.error) {
-        const apiMessage = describeApiError(res.status, j?.error);
-        if (isLocalPreview() && res.status === 500 && /GEMINI_API_KEY/.test(j?.error?.message || apiMessage)) {
-          setData(localMockReport(subj.slice(0, solo ? 1 : 2), solo));
-          setStage("report");
-          return;
+        if (!res.ok || j.error) {
+          const apiMessage = describeApiError(res.status, j?.error);
+          if (isLocalPreview() && res.status === 500 && /GEMINI_API_KEY/.test(j?.error?.message || apiMessage)) {
+            setData({ ...localMockReport(subj.slice(0, solo ? 1 : 2), solo), __imageEvidence: imageEvidence });
+            setStage("report");
+            return;
+          }
+          return fail(`요청이 거부되었습니다 (HTTP ${res.status}) — ${apiMessage}`);
         }
-        return fail(`요청이 거부되었습니다 (HTTP ${res.status}) — ${apiMessage}`);
+
+        const raw = extractGeminiText(j);
+        let candidateSessionId = j.sessionId;
+        lastRaw = raw;
+        if (!raw.trim()) {
+          lastError = "응답이 비어 있습니다. 이용권은 차감되지 않았습니다.";
+          continue;
+        }
+
+        let parsedResult = parseReportJsonPayload(raw);
+        if (!parsedResult.ok && j.candidates?.[0]?.finishReason !== "MAX_TOKENS") {
+          const repairPrompt = `아래 텍스트는 JSON 형식이 깨진 검사 결과다. 내용을 새로 쓰지 말고, 의미를 보존한 채 유효한 JSON 하나로만 고쳐라.
+
+[필수 규칙]
+- 코드펜스, 설명, 사과문, 주석 금지.
+- 아래 스키마의 키만 사용하고 추가 키를 만들지 마라.
+- 누락된 필드는 빈 값으로 두지 말고 문맥상 가장 가까운 짧은 값으로 채워라.
+- role은 "알파" 또는 "오메가"만, grade는 "극우성" "우성" "열성" "극열성" 중 하나만 쓴다.
+- site_code는 NP, CL, WR, SC, ME, TH, RB, AN, PL, HL 중 하나만 쓴다.
+- JSON 문자열 내부 실제 줄바꿈은 \\n으로 이스케이프한다.
+
+[스키마]
+${responseSchemaForMode(solo)}
+
+[고칠 텍스트]
+${parsedResult.candidate.slice(0, 12000)}`;
+
+          const repaired = await callReportEndpoint({
+            requestParts: [{ text: repairPrompt }],
+            phase: `repair_${attempt}`,
+            ms: REPAIR_TIMEOUT_MS,
+            generationConfig: {
+              maxOutputTokens: 4200,
+              temperature: 0.05,
+              topP: 0.2,
+              responseMimeType: "application/json",
+            },
+          });
+          if (!repaired) return;
+          if (!repaired.res.ok || repaired.j.error) {
+            const apiMessage = describeApiError(repaired.res.status, repaired.j?.error);
+            lastError = `응답 형식 보정에 실패했습니다 (HTTP ${repaired.res.status}) — ${apiMessage}`;
+          } else {
+            const repairedRaw = extractGeminiText(repaired.j);
+            lastRaw = repairedRaw || raw;
+            const repairedResult = parseReportJsonPayload(repairedRaw);
+            if (repairedResult.ok) {
+              parsedResult = repairedResult;
+              candidateSessionId = repaired.j.sessionId || j.sessionId;
+            } else {
+              lastError = `응답 형식 보정에 실패했습니다 (${raw.length}자).`;
+            }
+          }
+        } else if (!parsedResult.ok) {
+          lastError = `응답이 토큰 한도에서 잘렸습니다 (${raw.length}자).`;
+        }
+
+        if (parsedResult.ok) {
+          const candidate = parsedResult.value;
+          const normalizedCandidate = normalizeReport(candidate, subj, ans.imprint);
+          if (hasCompleteReport(normalizedCandidate, solo)) {
+            parsed = normalizedCandidate;
+            chargeSessionId = candidateSessionId;
+            break;
+          }
+          lastError = "결과에 필수 항목이 빠져 자동 재판별했습니다.";
+        }
       }
 
-      const raw = (j.candidates || [])
-        .flatMap((c) => c.content?.parts || [])
-        .map((p) => p.text || "")
-        .join("");
-      if (!raw.trim()) return fail("응답이 비어 있습니다. 다시 접수해 주십시오.");
-
-      const clean = raw.replace(/```json|```/g, "").trim();
-      const a = clean.indexOf("{");
-      const b = clean.lastIndexOf("}");
-      if (a < 0 || b <= a) {
-        if (requestSeq.current !== runId) return;
-        setReject(clean);
-        setStage("rejected");
-        return;
+      if (!parsed || (solo ? !parsed.subject : !parsed.subjects || !parsed.cross_reaction)) {
+        setReject(lastRaw.slice(0, 1800));
+        return fail(`${lastError} ${MAX_GENERATION_ATTEMPTS}회 자동 재시도 후 중단했습니다. 이용권은 차감되지 않았습니다.`);
       }
 
-      let parsed;
-      try {
-        parsed = JSON.parse(clean.slice(a, b + 1));
-      } catch {
-        return fail(
-          j.candidates?.[0]?.finishReason === "MAX_TOKENS"
-            ? `응답이 토큰 한도에서 잘렸습니다 (${raw.length}자). 한 줄 설명을 줄이거나 maxOutputTokens를 올리십시오.`
-            : `응답 형식이 어긋났습니다 (${raw.length}자). 다시 접수하면 대개 통과합니다.`
-        );
-      }
-
-      if (solo ? !parsed.subject : !parsed.subjects || !parsed.cross_reaction) {
-        return fail("결과에 필수 항목이 빠져 있습니다. 다시 접수해 주십시오.");
-      }
-
-      const normalized = normalizeReport(parsed, subj, ans.imprint);
-      if (!hasCompleteReport(normalized, solo)) {
-        return fail("결과가 완성되지 않아 이용권을 차감하지 않았습니다. 다시 접수해 주십시오.");
-      }
-
-      if (!j.sessionId) {
+      if (!chargeSessionId) {
         return fail("검사 세션이 확인되지 않아 이용권을 차감할 수 없습니다.");
       }
 
@@ -1098,7 +1317,7 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
           apiFetch("/passes/consume", {
             token: authToken,
             method: "POST",
-            body: JSON.stringify({ sessionId: j.sessionId, chargeKey }),
+            body: JSON.stringify({ sessionId: chargeSessionId, chargeKey }),
           }),
           PASS_TIMEOUT_MS,
           "이용권 차감 확인이 지연되었습니다."
@@ -1113,7 +1332,7 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
       }
 
       if (requestSeq.current !== runId) return;
-      setData(normalized);
+      setData({ ...parsed, __imageEvidence: imageEvidence });
       setStage("report");
     } catch (e) {
       fail(e?.name === "AbortError" ? "검사 응답이 지연되어 중단했습니다. 이용권은 차감되지 않았습니다." : `통신에 실패했습니다 — ${e?.message || "네트워크 오류"}`);
@@ -1410,7 +1629,7 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
             <div className="gm-reject">
               <p>{reject}</p>
             </div>
-            <button className="gm-again" onClick={resetForRetry}>
+            <button className="gm-again" onClick={backToForm}>
               재 접 수
             </button>
           </div>
@@ -1421,20 +1640,10 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
           <div className="gm-fade">
             <div className="gm-sec">
               <div className="gm-num"><b>Ⅰ. 감별 결과</b><em>ASSAY</em></div>
+              <ReportSpecimens evidence={data.__imageEvidence} solo={solo} imgMode={imgMode} subjects={subj} pair={pair} />
               <Codename data={data} />
               <div className="gm-subj">
                 <div className="gm-subj-hd">
-                  {subj[0]?.img && (
-                    <div className="gm-photo-wrap">
-                      <img
-                        src={`data:${subj[0].mime};base64,${subj[0].img}`}
-                        alt=""
-                        style={{
-                          transform: imageTransform(subj[0].adj || DEF_ADJ),
-                        }}
-                      />
-                    </div>
-                  )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <h4>{data.subject?.name}</h4>
                     <div className="gm-gradeline">
@@ -1585,34 +1794,10 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
           <div className="gm-fade">
             <div className="gm-sec">
               <div className="gm-num"><b>Ⅰ. 개체별 감별 결과</b><em>INDIVIDUAL ASSAY</em></div>
-              {imgMode === "페어 1장" && pair.img && (
-                <figure className="gm-pairfig">
-                  <div className="gm-pairfig-view">
-                    <img
-                      src={`data:${pair.mime};base64,${pair.img}`}
-                      alt=""
-                      style={{
-                        transform: imageTransform(pair.adj || DEF_ADJ),
-                      }}
-                    />
-                  </div>
-                  <figcaption>제출 검체 참조 이미지 · 2개체 동시 촬영</figcaption>
-                </figure>
-              )}
+              <ReportSpecimens evidence={data.__imageEvidence} solo={solo} imgMode={imgMode} subjects={subj} pair={pair} />
               {data.subjects?.map((s, i) => (
                 <div className="gm-subj" key={i}>
                   <div className="gm-subj-hd">
-                    {imgMode === "개별" && subj[i]?.img && (
-                      <div className="gm-photo-wrap">
-                        <img
-                          src={`data:${subj[i].mime};base64,${subj[i].img}`}
-                          alt=""
-                          style={{
-                            transform: imageTransform(subj[i].adj || DEF_ADJ),
-                          }}
-                        />
-                      </div>
-                    )}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <h4>{s.name}</h4>
                       <div className="gm-gradeline">
@@ -1802,8 +1987,11 @@ ${solo ? `{"subject":{"name":"","role":"","grade":"","confidence":0,"pheromone":
               <button className="gm-again" onClick={saveReportImage} disabled={savingImage}>
                 {savingImage ? "이미지 준비 중" : "결과 이미지 저장"}
               </button>
-              <button className="gm-again" onClick={resetForRetry}>
-                재 검 접 수
+              <button className="gm-again" onClick={run}>
+                같은 페어 재검
+              </button>
+              <button className="gm-again" onClick={backToForm}>
+                신청서로 돌아가기
               </button>
             </div>
           )}

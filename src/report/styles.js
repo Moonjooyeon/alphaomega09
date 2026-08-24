@@ -329,6 +329,27 @@ export const CSS = `
 .gm-photo-wrap{width:86px;height:108px;flex:0 0 86px;border:1px solid var(--rule);overflow:hidden;background:#f1f2ec;}
 .gm-photo-wrap img{width:100%;height:100%;object-fit:contain;display:block;
     filter:grayscale(.45) contrast(1.08) brightness(1.02);}
+.gm-specimens{margin:0 0 18px;border:1px solid var(--rule);background:var(--form);padding:9px;
+    position:relative;}
+.gm-specimens:before,.gm-specimens:after{content:'';position:absolute;top:11px;width:34px;height:9px;
+    background:rgba(178,103,111,.42);mix-blend-mode:multiply;transform:rotate(-4deg);}
+.gm-specimens:before{left:14px;}
+.gm-specimens:after{right:14px;transform:rotate(4deg);}
+.gm-specimens-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline;
+    padding:8px 6px 10px;border-bottom:1px solid var(--grid);}
+.gm-specimens-head b{font-size:9px;letter-spacing:.22em;color:var(--ink);}
+.gm-specimens-head span{font-size:9px;letter-spacing:.13em;color:var(--ink2);text-align:right;}
+.gm-specimens-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;padding-top:9px;}
+.gm-specimens-joint .gm-specimens-grid{grid-template-columns:1fr;}
+.gm-specimen{border:1px solid var(--grid);background:#f1f2ec;overflow:hidden;}
+.gm-specimen-img{height:236px;overflow:hidden;background:#10130f;}
+.gm-specimens-joint .gm-specimen-img{height:312px;}
+.gm-specimen-img img{width:100%;height:100%;object-fit:contain;display:block;
+    filter:grayscale(.34) contrast(1.08) brightness(.98);transform-origin:50% 50%;}
+.gm-specimen-cap{display:flex;justify-content:space-between;gap:10px;align-items:baseline;
+    padding:8px 9px;background:var(--form);border-top:1px solid var(--grid);}
+.gm-specimen-cap span{font-size:8.5px;letter-spacing:.17em;color:var(--ink2);}
+.gm-specimen-cap b{font-size:11px;overflow-wrap:anywhere;text-align:right;}
 .gm-pairfig-view{height:300px;overflow:hidden;background:#f1f2ec;}
 .gm-pairfig-view img{width:100%;height:100%;object-fit:contain;display:block;
     filter:grayscale(.45) contrast(1.08);}
@@ -450,6 +471,14 @@ export const CSS = `
   .gm-subj{padding:16px 14px;margin-bottom:12px;}
   .gm-subj-hd{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;}
   .gm-photo-wrap{width:100%;height:188px;flex-basis:auto;}
+  .gm-specimens{padding:8px;margin-bottom:16px;}
+  .gm-specimens:before,.gm-specimens:after{width:26px;height:8px;top:10px;}
+  .gm-specimens-head{display:block;padding:8px 5px 9px;}
+  .gm-specimens-head span{display:block;text-align:left;margin-top:5px;line-height:1.5;}
+  .gm-specimens-grid{grid-template-columns:1fr;gap:8px;}
+  .gm-specimen-img,.gm-specimens-joint .gm-specimen-img{height:230px;}
+  .gm-specimen-cap{display:block;}
+  .gm-specimen-cap b{display:block;text-align:left;margin-top:4px;font-size:12px;}
   .gm-gradeline{display:grid;grid-template-columns:auto auto 1fr;gap:8px 10px;align-items:end;margin:9px 0 12px;}
   .gm-grade{font-size:38px;letter-spacing:0;}
   .gm-role{font-size:22px;letter-spacing:0;}
