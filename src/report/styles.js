@@ -348,11 +348,11 @@ export const CSS = `
 .gm-specimen-body{display:grid;grid-template-columns:minmax(160px,.78fr) minmax(0,1fr);gap:14px;padding:13px;
     background:linear-gradient(180deg,rgba(255,255,255,.28),transparent);}
 .gm-specimens-joint .gm-specimen-body{grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);}
-.gm-specimen-photo{height:236px;border:1px solid var(--grid);background:#dde0d8;overflow:hidden;position:relative;}
-.gm-specimens-joint .gm-specimen-photo{height:300px;}
+.gm-specimen-photo{height:210px;border:1px solid var(--grid);background:#dde0d8;overflow:hidden;position:relative;}
+.gm-specimens-joint .gm-specimen-photo{height:270px;}
 .gm-specimen-photo:after{content:'';position:absolute;inset:0;border:8px solid rgba(252,252,248,.36);pointer-events:none;}
-.gm-specimen-photo img{width:100%;height:100%;object-fit:cover;display:block;
-    image-rendering:auto;transform-origin:50% 50%;}
+.gm-specimen-photo-bg{position:absolute;inset:0;background-size:cover;background-position:center;background-repeat:no-repeat;
+    image-rendering:auto;transform-origin:50% 50%;will-change:transform;}
 .gm-specimen-profile{min-width:0;display:flex;flex-direction:column;gap:10px;}
 .gm-specimen-name{display:inline-block;align-self:flex-start;min-width:72px;max-width:100%;
     border:1px solid var(--ink2);padding:4px 9px;font-size:12px;font-weight:700;overflow-wrap:anywhere;}
@@ -493,7 +493,7 @@ export const CSS = `
   .gm-specimens-head span{display:block;text-align:left;margin-top:5px;line-height:1.5;}
   .gm-specimens-grid{grid-template-columns:1fr;gap:10px;}
   .gm-specimen-body,.gm-specimens-joint .gm-specimen-body{grid-template-columns:1fr;gap:10px;padding:11px;}
-  .gm-specimen-photo,.gm-specimens-joint .gm-specimen-photo{height:min(68vw,320px);}
+  .gm-specimen-photo,.gm-specimens-joint .gm-specimen-photo{height:min(56vw,260px);}
   .gm-specimen-profile table{font-size:10px;}
   .gm-specimen-profile th,.gm-specimen-profile td{padding:5px 6px;}
   .gm-specimen-lines p{font-size:10px;}
