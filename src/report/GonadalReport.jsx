@@ -504,10 +504,11 @@ function makeImageEvidence({ solo, imgMode, subjects, pair }) {
   };
 }
 
-function ReportSpecimens({ evidence, solo, imgMode, subjects, pair }) {
+function ReportSpecimens({ evidence, solo, imgMode, subjects, pair, report }) {
   const fallback = makeImageEvidence({ solo, imgMode, subjects, pair });
   const finalEvidence = evidence?.items?.length ? evidence : fallback;
   const { joint, items, caption } = finalEvidence;
+  const reportSubjects = solo ? [report?.subject] : report?.subjects || [];
 
   if (!items.length) return null;
 
@@ -520,16 +521,56 @@ function ReportSpecimens({ evidence, solo, imgMode, subjects, pair }) {
       <div className="gm-specimens-grid">
         {items.map((item, index) => (
           <div className="gm-specimen" key={`${item.label}-${index}`}>
-            <div className="gm-specimen-img">
-              <img
-                src={`data:${item.mime || "image/jpeg"};base64,${item.img}`}
-                alt=""
-                style={{ transform: imageTransform(item.adj || DEF_ADJ) }}
-              />
-            </div>
-            <div className="gm-specimen-cap">
+            <div className="gm-specimen-strip">
               <span>{item.label}</span>
-              <b>{item.name}</b>
+              <b>{joint ? "JOINT" : index === 0 ? "A" : "B"}</b>
+            </div>
+            <div className="gm-specimen-body">
+              <div className="gm-specimen-photo">
+                <img
+                  src={`data:${item.mime || "image/jpeg"};base64,${item.img}`}
+                  alt=""
+                  style={{ transform: imageTransform(item.adj || DEF_ADJ) }}
+                />
+              </div>
+              <div className="gm-specimen-profile">
+                {joint ? (
+                  (reportSubjects.length ? reportSubjects : subjects.slice(0, 2)).map((subject, subjectIndex) => (
+                    <div className="gm-specimen-row" key={subjectIndex}>
+                      <span>{subjectIndex === 0 ? "A" : "B"}</span>
+                      <b>{subject?.name || (subjectIndex === 0 ? "개체 A" : "개체 B")}</b>
+                      <i>
+                        {subject?.grade || "미판정"} · {subject?.role || "미판정"}
+                      </i>
+                    </div>
+                  ))
+                ) : (
+                  <>
+                    <div className="gm-specimen-name">{reportSubjects[index]?.name || item.name}</div>
+                    <table>
+                      <tbody>
+                        <tr>
+                          <th>CLASS</th>
+                          <td>{reportSubjects[index]?.role || "미판정"}</td>
+                        </tr>
+                        <tr>
+                          <th>GRADE</th>
+                          <td>{reportSubjects[index]?.grade || "미판정"}</td>
+                        </tr>
+                        <tr>
+                          <th>SCENT</th>
+                          <td>{reportSubjects[index]?.pheromone?.family || reportSubjects[index]?.pheromone?.scent_code || "미기록"}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <div className="gm-specimen-lines">
+                      {(reportSubjects[index]?.evidence || []).slice(0, 2).map((line, lineIndex) => (
+                        <p key={lineIndex}>{line}</p>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         ))}
@@ -1640,7 +1681,7 @@ ${parsedResult.candidate.slice(0, 12000)}`;
           <div className="gm-fade">
             <div className="gm-sec">
               <div className="gm-num"><b>Ⅰ. 감별 결과</b><em>ASSAY</em></div>
-              <ReportSpecimens evidence={data.__imageEvidence} solo={solo} imgMode={imgMode} subjects={subj} pair={pair} />
+              <ReportSpecimens evidence={data.__imageEvidence} solo={solo} imgMode={imgMode} subjects={subj} pair={pair} report={data} />
               <Codename data={data} />
               <div className="gm-subj">
                 <div className="gm-subj-hd">
@@ -1794,7 +1835,7 @@ ${parsedResult.candidate.slice(0, 12000)}`;
           <div className="gm-fade">
             <div className="gm-sec">
               <div className="gm-num"><b>Ⅰ. 개체별 감별 결과</b><em>INDIVIDUAL ASSAY</em></div>
-              <ReportSpecimens evidence={data.__imageEvidence} solo={solo} imgMode={imgMode} subjects={subj} pair={pair} />
+              <ReportSpecimens evidence={data.__imageEvidence} solo={solo} imgMode={imgMode} subjects={subj} pair={pair} report={data} />
               {data.subjects?.map((s, i) => (
                 <div className="gm-subj" key={i}>
                   <div className="gm-subj-hd">
