@@ -14,7 +14,7 @@ export function caseNo() {
   )}`;
 }
 
-export function imageFileToInlineData(file, maxSize = 1024, quality = 0.72) {
+export function imageFileToInlineData(file, maxSize = 1800, quality = 0.92) {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith("image/")) {
       const reader = new FileReader();
@@ -33,6 +33,10 @@ export function imageFileToInlineData(file, maxSize = 1024, quality = 0.72) {
         canvas.width = Math.max(1, Math.round(img.width * scale));
         canvas.height = Math.max(1, Math.round(img.height * scale));
         const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL("image/jpeg", quality);
         resolve({ data: dataUrl.split(",")[1], mime: "image/jpeg" });

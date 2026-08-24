@@ -110,7 +110,7 @@ export const CSS = `
 .gm-scent-ft{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:10px 0 0;font-size:10.5px;color:var(--ink2);}
 .gm-trigger{margin:8px 0 0;font-size:11.5px;color:var(--ink2);line-height:1.7;}
 .gm-scentnote{margin:14px 0 0;font-size:15px;line-height:1.9;letter-spacing:-.01em;
-      border-top:1px solid var(--grid);padding-top:13px;}
+      border-top:1px solid var(--grid);padding-top:13px;min-height:5.7em;}
 .gm-imprint{font-size:31px;line-height:1.55;font-weight:700;letter-spacing:-.03em;margin:4px 0 0;}
 .gm-imprint em{font-style:normal;color:var(--seal);border-bottom:2px solid var(--seal);padding-bottom:1px;}
 .gm-meaning{margin:13px 0 0;font-size:13.5px;line-height:1.9;color:var(--ink2);}
@@ -145,14 +145,14 @@ export const CSS = `
 .gm-cells em{font-style:normal;font-size:10px;color:var(--ink2);width:24px;text-align:right;}
 
 .gm-caution{margin-top:14px;border-left:3px solid var(--seal);padding:9px 0 9px 13px;
-      font-size:11.5px;line-height:1.7;color:var(--ink2);}
+      font-size:11.5px;line-height:1.7;color:var(--ink2);min-height:3.4em;}
 
 /* imprint */
 /* prognosis + note */
 .gm-ph{border-top:1px solid var(--grid);padding:12px 0;display:grid;
       grid-template-columns:78px 1fr;gap:16px;}
 .gm-ph b{font-size:9px;letter-spacing:.16em;color:var(--ink2);font-weight:400;padding-top:3px;}
-.gm-ph p{margin:0;font-size:13px;line-height:1.85;}
+.gm-ph p{margin:0;font-size:13px;line-height:1.85;min-height:3.7em;}
 .gm-protocol{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px;}
 .gm-protocol>div{border:1px solid var(--grid);padding:12px 13px;background:var(--form);}
 .gm-protocol span{display:block;font-size:8.5px;letter-spacing:.2em;color:var(--ink2);margin-bottom:6px;}
@@ -160,7 +160,7 @@ export const CSS = `
 .gm-protocol p{margin:0;font-size:12.5px;line-height:1.75;color:var(--ink2);}
 @media(max-width:640px){.gm-protocol{grid-template-columns:1fr;}}
 .gm-examiner{background:var(--paper);padding:19px 21px;position:relative;}
-.gm-examiner p{margin:0;font-size:15px;line-height:2.05;letter-spacing:-.01em;}
+.gm-examiner p{margin:0;font-size:15px;line-height:2.05;letter-spacing:-.01em;min-height:4.1em;}
 .gm-sign{display:flex;justify-content:flex-end;align-items:center;gap:13px;margin-top:16px;}
 .gm-seal{width:56px;height:56px;border:2px solid var(--seal);border-radius:50%;color:var(--seal);
       display:flex;flex-direction:column;align-items:center;justify-content:center;
