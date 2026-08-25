@@ -43,7 +43,7 @@
 - 운영 서버에서 Docker Compose 배포
 - 회사 도메인 DNS 연결
 - nginx/SSL 구성
-- Lightsail nginx 백엔드 프록시 설정 템플릿
+- Lightsail shared nginx 백엔드 프록시 설정 템플릿
 - 운영 `.env` 실제 값 주입
 - 운영 DB에서 사용자/검사/이용권 로그 저장 확인
 
@@ -111,6 +111,7 @@ npm run build:ait
 - 공용 key 전체 예산 제한 변수는 현재 사용하지 않습니다.
 - 운영 11회권은 `PASS_USES_PER_PURCHASE=11` 기준입니다. 서버 `.env.prod`에도 같은 값을 넣어야 합니다.
 - Toss mTLS 인증서 경로는 alpha 기준으로 `alpha_public.crt`, `alpha_private.key`를 사용합니다.
+- 운영 호스트 확인용 포트는 기본 `HTTP_PORT=19090`입니다. 공용 nginx는 `levelup-net`의 `alphaomega-app:9090`으로 붙습니다.
 
 ## 구성
 
