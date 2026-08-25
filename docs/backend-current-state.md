@@ -169,6 +169,7 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
 - `GEMINI_OUTPUT_USD_PER_MILLION`
 - `USD_TO_KRW`
 - `PAYMENT_PROVIDER`
+- `PASS_PRICE_KRW`
 - `PASS_USES_PER_PURCHASE`
 - `PURCHASE_MOCK`
 - `APPLE_ENV`
@@ -197,8 +198,19 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
 
 주의:
 
-- 운영 서버 `.env.prod`에 `PASS_USES_PER_PURCHASE=11`이 들어 있어야 결제 1건당 11회권으로 발급된다.
+- 운영 서버 `.env.prod`에 Toss 공급가 fallback `PASS_PRICE_KRW=627`, `PASS_USES_PER_PURCHASE=11`이 들어 있어야 현재 상품 기준과 맞는다.
+- 실제 결제 가격은 Toss/Apple/Google 상품 콘솔의 SKU 설정을 따른다.
+- Toss 결제창에서 사용자에게 `690원`으로 보이게 하려면 공급가를 `690 / 1.1 = 627.27원` 기준으로 역산한다.
+- Toss 콘솔에는 우선 `627원`으로 등록하고, 미리보기에서 최종 결제액이 `690원`으로 보이는지 확인한다.
 - Toss mTLS 파일은 `secrets/toss/alpha_public.crt`, `secrets/toss/alpha_private.key` 이름으로 맞춘다.
+
+## 690원 11회권 비용 기준
+
+- 총액 기준 1회당 매출은 약 `62.7원`이다.
+- VAT만 제외하면 약 `57.0원/회`, VAT와 30% 플랫폼 수수료를 모두 제외하면 약 `39.9원/회`다.
+- `gemini-3.5-flash-lite` 비용 추정 기본값은 입력 `$0.30/M`, 출력 `$2.50/M`, 환율 `1400`이다.
+- 검사 1회가 Gemini 호출 1회로 끝나면 대체로 감당 가능하다.
+- 자동 재시도가 3회 이상 반복되면 비용이 1회 매출을 넘길 수 있으므로 재시도 상한과 응답 검증이 중요하다.
 
 ## Lessons Baked Into The Design
 

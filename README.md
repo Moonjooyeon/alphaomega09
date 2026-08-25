@@ -86,6 +86,10 @@ npm run build:ait
 - `GEMINI_API_KEY`
 - `GEMINI_API_BASE`
 - `GEMINI_MODEL`
+- `GEMINI_INPUT_USD_PER_MILLION`
+- `GEMINI_OUTPUT_USD_PER_MILLION`
+- `USD_TO_KRW`
+- `PASS_PRICE_KRW`
 - `PASS_USES_PER_PURCHASE`
 - `PURCHASE_MOCK`
 - `TOSS_API_BASE`
@@ -110,7 +114,10 @@ npm run build:ait
 - `secrets/`는 git ignore 처리되어 있습니다.
 - 운영 Gemini key는 MonoGPT의 Gemini 라우터 key를 기준으로 둡니다.
 - 공용 key 전체 예산 제한 변수는 현재 사용하지 않습니다.
-- 운영 11회권은 `PASS_USES_PER_PURCHASE=11` 기준입니다. 서버 `.env.prod`에도 같은 값을 넣어야 합니다.
+- 운영 이용권은 Toss 공급가 fallback `PASS_PRICE_KRW=627`, `PASS_USES_PER_PURCHASE=11` 기준입니다. 서버 `.env.prod`에도 같은 값을 넣어야 합니다.
+- 가격은 백엔드가 강제하지 않고, 실제 결제 금액은 Toss/Apple/Google 상품 콘솔의 SKU 가격을 따릅니다.
+- Toss 결제창에서 사용자에게 `690원`으로 보이게 하려면 공급가를 `690 / 1.1 = 627.27원` 기준으로 역산합니다.
+- Toss 콘솔에는 우선 `627원`으로 등록하고, 콘솔 미리보기에서 최종 결제액이 `690원`으로 보이는지 확인합니다.
 - Toss mTLS 인증서 경로는 alpha 기준으로 `alpha_public.crt`, `alpha_private.key`를 사용합니다.
 - 운영 호스트 확인용 포트는 기본 `HTTP_PORT=19090`, `BACKEND_HTTP_PORT=19091`입니다.
 - 공용 nginx는 `levelup-net`의 `alphaomega-web:80`, `alphaomega-backend:9090`으로 붙습니다.

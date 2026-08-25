@@ -27,6 +27,11 @@ function publicOrder(row) {
   };
 }
 
+function amountOrDefault(value) {
+  if (value === undefined || value === null || value === "") return config.billing.passPriceKrw || 0;
+  return Number(value || 0);
+}
+
 async function createManualPurchase({ userId, providerOrderId, providerTransactionId, productId, amountKrw, rawResponse }) {
   if (!config.billing.purchaseMock) {
     const error = new Error("수동 이용권 발급은 PURCHASE_MOCK=true에서만 사용할 수 있습니다.");
@@ -55,7 +60,7 @@ async function createManualPurchase({ userId, providerOrderId, providerTransacti
         providerOrderId || id("manual_order"),
         providerTransactionId || id("manual_tx"),
         productId || "manual_pass",
-        Number(amountKrw || 0),
+        amountOrDefault(amountKrw),
         rawResponse || { mock: true },
       ]
     );
@@ -154,7 +159,7 @@ async function grantIapPass({ userId, orderId, sku, displayName, displayAmount, 
   }
   return recordApprovedPurchase({
     userId,
-    amountKrw: Number(amount || 0),
+    amountKrw: amountOrDefault(amount),
     verified: {
       provider: "apps_in_toss_iap",
       providerOrderId: orderId,

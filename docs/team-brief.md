@@ -193,6 +193,9 @@ Alphaomega는 기존 프론트 단독 Gemini 호출 구조에서, Docker Compose
 
 - `GEMINI_API_BASE=https://monogpt.kr/api/monorouter/v1/gemini`
 - `GEMINI_MODEL=gemini-3.5-flash-lite`
+- `GEMINI_INPUT_USD_PER_MILLION=0.30`
+- `GEMINI_OUTPUT_USD_PER_MILLION=2.50`
+- `PASS_PRICE_KRW=627`
 - `PASS_USES_PER_PURCHASE=11`
 - MonoGPT 라우터 호출 형태:
   - `https://monogpt.kr/api/monorouter/v1/gemini/v1beta/models/{model}:generateContent`
@@ -216,6 +219,23 @@ Alphaomega는 기존 프론트 단독 Gemini 호출 구조에서, Docker Compose
 - `PURCHASE_MOCK=true`일 때만 manual provider로 테스트 이용권을 발급할 수 있습니다.
 - 프론트는 현재 Toss 로그인 후 검사 접수 흐름을 갖고 있습니다.
 - 이용권 조회/차감 API는 백엔드에 구현되어 있습니다.
+
+가격 기준:
+
+- 기본 운영 상품은 사용자 결제창 기준 `690원 / 11회권`으로 재산정했습니다.
+- Toss 콘솔 공급가 기준은 `PASS_PRICE_KRW=627`입니다.
+- 백엔드는 `PASS_PRICE_KRW=627`을 주문 기록의 fallback 금액으로만 사용하며, 실제 가격은 결제 provider 응답값을 우선합니다.
+- 실제 사용자 결제 금액은 Toss/Apple/Google 상품 콘솔에 등록된 SKU 가격을 따릅니다.
+- Toss가 공급가에 VAT를 더해 표시하는 구조라면 사용자 결제창 `690원` 목표 공급가는 `690 / 1.1 = 627.27원`입니다.
+- Toss 콘솔에는 우선 `627원`으로 등록하고, 미리보기에서 최종 결제액이 `690원`으로 보이는지 확인해야 합니다.
+
+API 비용 기준:
+
+- 현재 모델은 MonoGPT Gemini 라우터의 `gemini-3.5-flash-lite`입니다.
+- 비용 추정 기본값은 입력 `$0.30/M`, 출력 `$2.50/M`, 환율 `1400`입니다.
+- `690원 / 11회권`은 총액 기준 1회당 약 `62.7원`입니다.
+- VAT만 제외하면 약 `57.0원/회`, VAT와 30% 플랫폼 수수료를 모두 보수적으로 보면 약 `39.9원/회`입니다.
+- 검사 1회가 Gemini 호출 1회로 끝나면 대체로 감당 가능하지만, 자동 재시도가 3회 이상 자주 발생하면 마진이 빠르게 줄어듭니다.
 
 예정 흐름:
 
