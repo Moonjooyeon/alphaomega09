@@ -37,10 +37,12 @@ app.use("/api", purchasesRoutes);
 app.use("/api", usageRoutes);
 app.use("/api", geminiRoutes);
 
-app.use(express.static(path.join(__dirname, "..", "dist")));
-app.get(/.*/, (_req, res) => {
-  res.sendFile(path.join(__dirname, "..", "dist", "index.html"));
-});
+if (config.serveStatic) {
+  app.use(express.static(path.join(__dirname, "..", "dist")));
+  app.get(/.*/, (_req, res) => {
+    res.sendFile(path.join(__dirname, "..", "dist", "index.html"));
+  });
+}
 
 app.use((error, _req, res, next) => {
   if (!error) return next();

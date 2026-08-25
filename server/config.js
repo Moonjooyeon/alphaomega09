@@ -58,5 +58,6 @@ module.exports = {
   audit: {
     logToken: process.env.AUDIT_LOG_TOKEN || "",
   },
+  serveStatic: String(process.env.SERVE_STATIC || "true").toLowerCase() !== "false",
   maxRequestBytes: numberFromEnv("MAX_REQUEST_BYTES", 4_500_000),
 };

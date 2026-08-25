@@ -4,7 +4,8 @@ Docker Compose 기준 백엔드 배포 메모.
 
 ## 구성
 
-- `app`: React 정적 파일 서빙 + `/api/*` 백엔드
+- `web`: React 정적 파일 nginx 서빙
+- `backend`: Express `/api/*` 백엔드
 - `db`: PostgreSQL
 
 ## API
@@ -39,15 +40,17 @@ curl http://127.0.0.1:8080/health
 
 ## Lightsail nginx
 
-운영 compose는 앱 컨테이너를 `alphaomega-app`으로 고정하고, 호스트 확인용 포트는 `127.0.0.1:19090`에 연다.
+운영 compose는 웹 컨테이너를 `alphaomega-web`, 백엔드 컨테이너를 `alphaomega-backend`로 고정한다.
+호스트 확인용 포트는 웹 `127.0.0.1:19090`, 백엔드 `127.0.0.1:19091`에 연다.
 
 nginx 설정 템플릿:
 
 - `deploy/lightsail/nginx/alphaomega.conf`
 
-`ukdong-black/lightsail-nginx-configure`의 `af-levelup` 브랜치 기준 shared Docker nginx는 같은 `levelup-net`에서 `alphaomega-app:9090`으로 프록시한다.
-Host nginx를 직접 쓸 때만 `127.0.0.1:19090`으로 프록시한다.
+`ukdong-black/lightsail-nginx-configure`의 `af-levelup` 브랜치 기준 shared Docker nginx는 같은 `levelup-net`에서 `/`를 `alphaomega-web:80`, `/api/*`와 `/health`를 `alphaomega-backend:9090`으로 프록시한다.
+Host nginx를 직접 쓸 때만 `127.0.0.1:19090`, `127.0.0.1:19091`로 프록시한다.
 적용 순서는 `docs/lightsail-nginx.md`를 기준으로 한다.
+기존 단일 컨테이너 `alphaomega-app`이 남을 수 있으므로 첫 분리 배포에는 `--remove-orphans`를 붙인다.
 
 ## 운영 환경변수
 

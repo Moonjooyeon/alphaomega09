@@ -15,10 +15,11 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
 
 ## Runtime Layout
 
-- `app`: React 정적 파일 서빙 + Express API 서버
+- `web`: React 정적 파일 nginx 서버
+- `backend`: Express API 서버
 - `db`: PostgreSQL
-- `Dockerfile`: 프론트 빌드 후 `server/index.js` 실행
-- `docker-compose.yml`: app/db 구성, `/api/*`와 정적 파일을 같은 서버에서 처리
+- `Dockerfile`: 프론트 빌드용 `web` target과 API용 `backend` target 분리
+- `docker-compose.yml`: web/backend/db 구성
 
 ## Progress Snapshot
 
@@ -52,6 +53,7 @@ Alphaomega를 프론트 단독 앱에서 결제/이용권 기반 서비스로 �
 - 실제 토스 앱/샌드박스에서 로그인 왕복 검증
 - 실제 토스인앱 sandbox IAP 결제 E2E 검증
 - 운영 서버 nginx/domain/compose 파일 확정
+- 운영 서버에서 web/backend 분리 배포 검증
 
 마지막 로컬 검증:
 

@@ -1,6 +1,6 @@
 # Lightsail Nginx Setup
 
-AlphaOmega 운영 서버는 앱 컨테이너가 `levelup-net` 안에서 `alphaomega-app:9090`으로 뜨고, 공용 Lightsail nginx가 회사 도메인의 HTTP/HTTPS 요청을 앱으로 넘기는 구조를 기준으로 둔다.
+AlphaOmega 운영 서버는 `web`과 `backend` 컨테이너를 분리해서 띄우고, 공용 Lightsail nginx가 회사 도메인의 HTTP/HTTPS 요청을 각각의 컨테이너로 넘기는 구조를 기준으로 둔다.
 
 참고 기준:
 
@@ -8,10 +8,13 @@ AlphaOmega 운영 서버는 앱 컨테이너가 `levelup-net` 안에서 `alphaom
 
 ## 현재 백엔드 대상
 
-- 앱 컨테이너 이름: `alphaomega-app`
-- 앱 내부 포트: `9090`
-- 호스트 확인용 바인딩: `127.0.0.1:19090`
-- nginx upstream: `alphaomega-app:9090`
+- 웹 컨테이너 이름: `alphaomega-web`
+- 웹 내부 포트: `80`
+- 백엔드 컨테이너 이름: `alphaomega-backend`
+- 백엔드 내부 포트: `9090`
+- 웹 호스트 확인용 바인딩: `127.0.0.1:19090`
+- 백엔드 호스트 확인용 바인딩: `127.0.0.1:19091`
+- nginx upstream: `/` -> `alphaomega-web:80`, `/api/*` + `/health` -> `alphaomega-backend:9090`
 - 공개 헬스체크: `GET /health`
 - API 헬스체크: `GET /api/health`
 
@@ -21,14 +24,16 @@ AlphaOmega 운영 서버는 앱 컨테이너가 `levelup-net` 안에서 `alphaom
 
 ```bash
 cd ~/alphaomega09
-docker compose --env-file .env.prod -f docker-compose.prd.yml up -d --build
+docker compose --env-file .env.prod -f docker-compose.prd.yml up -d --build --remove-orphans
 curl http://127.0.0.1:19090/health
+curl http://127.0.0.1:19091/health
 ```
 
 `HTTP_PORT`를 직접 지정한다면 다른 서비스와 겹치지 않게 둔다. 특별한 이유가 없으면 `.env.prod`에는 아래처럼 둔다.
 
 ```env
 HTTP_PORT=19090
+BACKEND_HTTP_PORT=19091
 ```
 
 ## Shared Docker Nginx 기준
@@ -45,8 +50,20 @@ cd af-levelup
 `af-levelup/nginx/default.conf`의 alphaomega 블록에서 upstream 대상이 아래처럼 되어 있어야 한다.
 
 ```nginx
-set $alphaomega_app alphaomega-app:9090;
-proxy_pass http://$alphaomega_app;
+location = /health {
+    set $alphaomega_backend alphaomega-backend:9090;
+    proxy_pass http://$alphaomega_backend;
+}
+
+location ^~ /api/ {
+    set $alphaomega_backend alphaomega-backend:9090;
+    proxy_pass http://$alphaomega_backend;
+}
+
+location / {
+    set $alphaomega_web alphaomega-web:80;
+    proxy_pass http://$alphaomega_web;
+}
 ```
 
 이 repo의 템플릿은 아래 파일에 있다.
@@ -69,10 +86,20 @@ curl https://alphaomega.ashwoodfriends.com/health
 
 ## Host Nginx를 쓰는 경우
 
-공용 Docker nginx가 아니라 서버 호스트의 nginx를 직접 쓴다면 upstream만 `127.0.0.1:19090`으로 둔다.
+공용 Docker nginx가 아니라 서버 호스트의 nginx를 직접 쓴다면 `/api/*`와 `/health`는 `127.0.0.1:19091`, 루트 앱은 `127.0.0.1:19090`으로 둔다.
 
 ```nginx
-proxy_pass http://127.0.0.1:19090;
+location = /health {
+    proxy_pass http://127.0.0.1:19091;
+}
+
+location ^~ /api/ {
+    proxy_pass http://127.0.0.1:19091;
+}
+
+location / {
+    proxy_pass http://127.0.0.1:19090;
+}
 ```
 
 ## 확인 포인트

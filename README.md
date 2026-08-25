@@ -14,6 +14,7 @@
 - Express 백엔드 추가
 - PostgreSQL 마이그레이션 추가
 - Dockerfile / `docker-compose.yml` 추가
+- Docker Compose 컨테이너 `web` / `backend` 분리
 - `/api/health` 서버 상태 확인
 - `/health` 공개 서버 상태 확인
 - `/api/gemini` 서버 프록시
@@ -111,7 +112,8 @@ npm run build:ait
 - 공용 key 전체 예산 제한 변수는 현재 사용하지 않습니다.
 - 운영 11회권은 `PASS_USES_PER_PURCHASE=11` 기준입니다. 서버 `.env.prod`에도 같은 값을 넣어야 합니다.
 - Toss mTLS 인증서 경로는 alpha 기준으로 `alpha_public.crt`, `alpha_private.key`를 사용합니다.
-- 운영 호스트 확인용 포트는 기본 `HTTP_PORT=19090`입니다. 공용 nginx는 `levelup-net`의 `alphaomega-app:9090`으로 붙습니다.
+- 운영 호스트 확인용 포트는 기본 `HTTP_PORT=19090`, `BACKEND_HTTP_PORT=19091`입니다.
+- 공용 nginx는 `levelup-net`의 `alphaomega-web:80`, `alphaomega-backend:9090`으로 붙습니다.
 
 ## 구성
 
@@ -136,6 +138,11 @@ npm run build:ait
 - `server/services/passes.js`: 이용권 차감과 중복 차감 방지
 - `server/services/purchases.js`: 구매 승인/이용권 발급 공통 로직
 - `server/services/audit.js`: 로그인, 결제, 이용권, AI 호출 이벤트 기록
+
+컨테이너:
+
+- `alphaomega-web`: React 정적 파일 nginx 서빙
+- `alphaomega-backend`: Express API, Gemini 프록시, 로그인/결제/이용권 처리
 
 ## API
 
