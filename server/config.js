@@ -55,5 +55,8 @@ module.exports = {
     mtlsKeyPassword: process.env.TOSS_MTLS_KEY_PASSWORD || "",
     loginMock: String(process.env.TOSS_LOGIN_MOCK || "").toLowerCase() === "true",
   },
+  audit: {
+    logToken: process.env.AUDIT_LOG_TOKEN || "",
+  },
   maxRequestBytes: numberFromEnv("MAX_REQUEST_BYTES", 4_500_000),
 };

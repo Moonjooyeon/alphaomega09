@@ -1,6 +1,7 @@
 const express = require("express");
 const config = require("../config");
 const { query } = require("../db");
+const { recordAuditLog } = require("../services/audit");
 const { optionalUser } = require("../services/auth");
 const { callGemini } = require("../services/gemini");
 const { estimateCost, getTokenUsage } = require("../services/usage");
@@ -81,6 +82,17 @@ router.post("/gemini", async (req, res) => {
   const keyMode = userApiKey ? "personal" : "shared";
   const apiKey = userApiKey || config.gemini.apiKey;
   if (!apiKey) {
+    await recordAuditLog(req, {
+      userId: currentUser?.id,
+      eventType: "gemini_request",
+      status: "failed",
+      metadata: {
+        reason: "missing_api_key",
+        keyMode,
+        reportMode,
+        requestedModel: config.gemini.model,
+      },
+    });
     res.status(500).json(jsonError("서버에 GEMINI_API_KEY가 설정되지 않았습니다."));
     return;
   }
@@ -92,6 +104,19 @@ router.post("/gemini", async (req, res) => {
     ({ response, body } = await callGemini({ apiKey, contents, generationConfig }));
   } catch (error) {
     await query("UPDATE usage_sessions SET status = 'failed', completed_at = now() WHERE id = $1", [sessionId]);
+    await recordAuditLog(req, {
+      userId: currentUser?.id,
+      eventType: "gemini_request",
+      status: "failed",
+      entityType: "usage_session",
+      entityId: sessionId,
+      metadata: {
+        reason: error?.message || "Gemini 요청 실패",
+        keyMode,
+        reportMode,
+        requestedModel: config.gemini.model,
+      },
+    });
     res.status(502).json(jsonError(error?.message || "Gemini 요청에 실패했습니다."));
     return;
   }
@@ -102,9 +127,40 @@ router.post("/gemini", async (req, res) => {
   try {
     await recordGeminiRequest({ req, userId: currentUser?.id, sessionId, keyMode, response, body, tokens, cost });
   } catch (error) {
+    await recordAuditLog(req, {
+      userId: currentUser?.id,
+      eventType: "gemini_usage_recorded",
+      status: "failed",
+      entityType: "usage_session",
+      entityId: sessionId,
+      metadata: {
+        reason: error?.message || "사용량 저장 실패",
+        keyMode,
+        reportMode,
+        requestedModel: config.gemini.model,
+      },
+    });
     res.status(500).json(jsonError(error?.message || "사용량을 저장하지 못했습니다."));
     return;
   }
+
+  await recordAuditLog(req, {
+    userId: currentUser?.id,
+    eventType: "gemini_request",
+    status: response.ok ? "ok" : "failed",
+    entityType: "usage_session",
+    entityId: sessionId,
+    metadata: {
+      keyMode,
+      reportMode,
+      requestedModel: config.gemini.model,
+      httpStatus: response.status,
+      inputTokens: Math.round(tokens.inputTokens),
+      outputTokens: Math.round(tokens.outputTokens),
+      costKrw: cost.costKrw,
+      phase: req.body?.phase || "generate",
+    },
+  });
 
   body.usageLimit =
     keyMode === "shared"

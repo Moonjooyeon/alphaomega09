@@ -1,5 +1,6 @@
 const express = require("express");
 const config = require("../config");
+const { recordAuditLog } = require("../services/audit");
 const { makeToken, requireUser } = require("../services/auth");
 const { loginWithToss } = require("../services/toss");
 const { publicUser, upsertLoginUser } = require("../services/users");
@@ -26,6 +27,17 @@ router.post("/toss/login", async (req, res) => {
       loginId: `toss:${tossUser.userKey}`,
       displayName: displayNameForTossUser(tossUser.userKey),
     });
+    await recordAuditLog(req, {
+      userId: user.id,
+      eventType: "toss_login",
+      status: "ok",
+      entityType: "app_user",
+      entityId: user.id,
+      metadata: {
+        mock: Boolean(config.toss.loginMock),
+        tossUserKeySuffix: String(tossUser.userKey).slice(-4),
+      },
+    });
 
     res.json({
       user: publicUser(user),
@@ -33,6 +45,15 @@ router.post("/toss/login", async (req, res) => {
       tossUserKey: tossUser.userKey,
     });
   } catch (error) {
+    await recordAuditLog(req, {
+      eventType: "toss_login",
+      status: "failed",
+      metadata: {
+        reason: error.message || "Toss 로그인 실패",
+        httpStatus: error.status || 500,
+        mock: Boolean(config.toss.loginMock),
+      },
+    });
     res.status(error.status || 500).json(jsonError(error.message || "Toss 로그인에 실패했습니다."));
   }
 });

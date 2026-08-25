@@ -19,6 +19,7 @@
 - `/api/gemini` 서버 프록시
 - MonoGPT Gemini 라우터 기본 설정
 - Gemini 요청별 로그, 토큰, 예상 비용 저장
+- audit log 테이블 및 주요 백엔드 이벤트 기록
 - 전체 공용 API key 예산 제한 해제
 - Toss 로그인 `appLogin()` 연동
 - Toss 로그인 사용자를 `app_users`에 저장
@@ -30,6 +31,7 @@
 - `POST /api/iap/grant-pass` Apps in Toss IAP 이용권 11회 발급
 - Apple/Google 인앱 결제 직접 검증 보조 경로
 - `POST /api/purchases/verify` 결제 검증 API
+- `GET /api/audit/recent` 운영 확인용 audit log 조회
 - 테스트 모드에서 mock 이용권 발급
 - 프론트/백엔드 역할 분리 문서화
 - 지금까지 겪은 배포/결제/이용권 오류 반영 문서화
@@ -41,6 +43,7 @@
 - 운영 서버에서 Docker Compose 배포
 - 회사 도메인 DNS 연결
 - nginx/SSL 구성
+- Lightsail nginx 백엔드 프록시 설정 템플릿
 - 운영 `.env` 실제 값 주입
 - 운영 DB에서 사용자/검사/이용권 로그 저장 확인
 
@@ -78,6 +81,7 @@ npm run build:ait
 
 - `POSTGRES_PASSWORD`
 - `SESSION_SECRET`
+- `AUDIT_LOG_TOKEN`
 - `GEMINI_API_KEY`
 - `GEMINI_API_BASE`
 - `GEMINI_MODEL`
@@ -127,8 +131,10 @@ npm run build:ait
 - `server/routes/passes.js`: 이용권 조회/차감
 - `server/routes/iap.js`: Apps in Toss IAP 이용권 발급
 - `server/routes/purchases.js`: Apple/Google 결제 검증
+- `server/routes/audit.js`: 운영 확인용 audit log 조회
 - `server/services/passes.js`: 이용권 차감과 중복 차감 방지
 - `server/services/purchases.js`: 구매 승인/이용권 발급 공통 로직
+- `server/services/audit.js`: 로그인, 결제, 이용권, AI 호출 이벤트 기록
 
 ## API
 
@@ -140,6 +146,7 @@ npm run build:ait
 | `GET /api/me` | 현재 로그인 사용자 확인 |
 | `POST /api/gemini` | Gemini/MonoGPT 서버 프록시 |
 | `GET /api/usage` | 공용 key 누적 사용량/예상 비용 조회 |
+| `GET /api/audit/recent` | `AUDIT_LOG_TOKEN`으로 보호되는 최근 audit log 조회 |
 | `GET /api/passes` | 로그인 사용자의 잔여 이용권 조회 |
 | `POST /api/passes/consume` | 최종 결과 확정 후 이용권 1회 차감 |
 | `POST /api/iap/grant-pass` | Apps in Toss IAP `orderId` 기준 11회권 발급 |
@@ -156,12 +163,14 @@ npm run build:ait
 - Apps in Toss IAP 구매 후 이용권 발급 API
 - 결과 확정 후 이용권 차감 API
 - 결제/이용권/검사 로그 DB 구조
+- 로그인/결제/이용권/AI 호출 audit log 구조
 
 운영에서 붙이면 되는 것:
 
 - 회사 도메인 DNS
 - nginx/SSL
 - 서버 `.env` 운영값
+- `AUDIT_LOG_TOKEN` 운영값
 - Toss/Apple/Google 콘솔의 실제 앱 설정
 - 토스 앱 안에서 최종 로그인/구매/검사 E2E 확인
 
@@ -170,6 +179,27 @@ npm run build:ait
 - `docs/team-brief.md`: 팀장님 공유용 전체 진행 요약
 - `docs/backend-current-state.md`: 백엔드 현재 상태
 - `docs/backend-deploy.md`: 배포 메모
+- `docs/lightsail-nginx.md`: Lightsail nginx 연결 순서
 - `docs/frontend-backend-boundary.md`: 프론트/백엔드 역할 분리
+- `docs/database-schema.md`: DB 테이블과 스키마 정리
 - `docs/incident-lessons.md`: 지금까지 겪은 오류와 재발 방지 기준
 - `docs/backend-architecture.md`: 백엔드 구조 설계
+
+## Audit Log
+
+주요 백엔드 이벤트는 `audit_logs`에 요약 저장합니다.
+
+- `toss_login`
+- `iap_pass_granted`
+- `purchase_verified`
+- `pass_consumed`
+- `gemini_request`
+- `gemini_usage_recorded`
+
+조회:
+
+```bash
+curl -H "x-audit-token: $AUDIT_LOG_TOKEN" "https://alphaomega.ashwoodfriends.com/api/audit/recent?limit=50"
+```
+
+토큰, API key, 인가 코드, 원문 결제 응답은 audit metadata에 그대로 저장하지 않습니다.

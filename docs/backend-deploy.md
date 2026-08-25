@@ -37,6 +37,17 @@ docker compose up -d --build
 curl http://127.0.0.1:8080/health
 ```
 
+## Lightsail nginx
+
+운영 compose는 앱 컨테이너를 `alphaomega-app`으로 고정하고, 호스트의 `127.0.0.1:9090`에만 포트를 연다.
+
+nginx 설정 템플릿:
+
+- `deploy/lightsail/nginx/alphaomega.conf`
+
+Host nginx는 `127.0.0.1:9090`으로 프록시하고, shared Docker nginx는 같은 `levelup-net`에서 `alphaomega-app:9090`으로 프록시한다.
+적용 순서는 `docs/lightsail-nginx.md`를 기준으로 한다.
+
 ## 운영 환경변수
 
 - `POSTGRES_PASSWORD`
