@@ -31,6 +31,7 @@ import {
   pairCycleLabels,
 } from "./helpers.js";
 import { localMockReport } from "./mockReport.js";
+import { useInterstitialAd } from "./useInterstitialAd.js";
 
 /* ─────────────────────────────────────────────
    성선의학연구소 — 개체 감별 및 교차반응 검사
@@ -739,6 +740,7 @@ export default function GonadalReport() {
   const reportRole = data?.subject?.role || subj[0]?.role;
   const reportIsAlpha = reportRole === "알파";
   const isAuthenticated = Boolean(authToken && authUser);
+  const showInterstitialAd = useInterstitialAd();
   const remainingUses = Number(passInfo?.totalRemainingUses || 0);
 
   useEffect(() => {
@@ -1061,6 +1063,9 @@ export default function GonadalReport() {
       setErr("토스 로그인 후 검사를 접수할 수 있습니다.");
       return;
     }
+
+    // 판별 요청은 아래에서 그대로 진행하고, 대기 구간에 전면 광고를 겹쳐 노출한다.
+    showInterstitialAd();
 
     activeController.current?.abort();
     const runId = requestSeq.current + 1;
