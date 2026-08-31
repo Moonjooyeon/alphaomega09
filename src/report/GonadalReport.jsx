@@ -742,6 +742,8 @@ export default function GonadalReport() {
   const isAuthenticated = Boolean(authToken && authUser);
   const showInterstitialAd = useInterstitialAd();
   const remainingUses = Number(passInfo?.totalRemainingUses || 0);
+  // 잔여가 0으로 확인된 경우에만 막는다. 조회 전이거나 조회 중이면 막지 않는다.
+  const outOfPasses = isAuthenticated && !passBusy && Boolean(passInfo) && remainingUses < 1;
 
   useEffect(() => {
     if (!authToken) {
@@ -1064,9 +1066,6 @@ export default function GonadalReport() {
       return;
     }
 
-    // 판별 요청은 아래에서 그대로 진행하고, 대기 구간에 전면 광고를 겹쳐 노출한다.
-    showInterstitialAd();
-
     activeController.current?.abort();
     const runId = requestSeq.current + 1;
     requestSeq.current = runId;
@@ -1099,6 +1098,11 @@ export default function GonadalReport() {
       setStage("input");
       return;
     }
+
+    // 차감할 이용권이 확인된 뒤에만 노출한다. 판별은 아래에서 그대로 이어지므로
+    // 광고를 보는 시간이 대기 시간에 흡수된다.
+    showInterstitialAd();
+
     const tick = setInterval(() => {
       if (requestSeq.current === runId) setStep((s) => (s + 1) % LOADING.length);
     }, 2600);
@@ -1690,12 +1694,14 @@ ${parsedResult.candidate.slice(0, 12000)}`;
 
             <div className="gm-sec">
               {err && <p className="gm-err">{err}</p>}
-              <button className="gm-go" onClick={run}>
+              <button className="gm-go" onClick={run} disabled={outOfPasses}>
                 검 사 접 수
               </button>
               <p className="gm-note">
                 {missing.length
                   ? `미기재: ${missing.join(" · ")}`
+                  : outOfPasses
+                  ? "잔여 검사가 없습니다. 이용권을 구매한 뒤 접수해 주십시오."
                   : isAuthenticated
                   ? `기재 완료. 현재 잔여 검사 ${remainingUses}회. 결과 확정 후 1회 차감됩니다.`
                   : "기재 완료. 접수 전 로그인이 필요합니다."}
