@@ -16,6 +16,8 @@ export const GEMINI_PROXY_ENDPOINT = import.meta.env.VITE_GEMINI_ENDPOINT || `${
 export const TOSS_LOGIN_MOCK = import.meta.env.VITE_TOSS_LOGIN_MOCK === "true";
 export const PURCHASE_MOCK = import.meta.env.VITE_PURCHASE_MOCK === "true";
 export const TOSS_IAP_SKU = import.meta.env.VITE_TOSS_IAP_SKU || "";
+export const TOSS_AD_GROUP_ID =
+  import.meta.env.VITE_TOSS_AD_GROUP_ID || "ait-ad-test-interstitial-id";
 export const IMG_MODES = ["개별", "페어 1장", "없음"];
 export const MODES = ["페어 감별", "개인 감별"];
 
