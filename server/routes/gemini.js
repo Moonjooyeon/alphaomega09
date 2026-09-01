@@ -18,7 +18,7 @@ async function createSession({ userId, keyMode, reportMode }) {
   return sessionId;
 }
 
-async function recordGeminiRequest({ req, userId, sessionId, keyMode, response, body, tokens, cost }) {
+async function recordGeminiRequest({ req, userId, sessionId, keyMode, response, body, tokens, cost, model }) {
   const error = body?.error || {};
   await query(
     `
@@ -34,8 +34,8 @@ async function recordGeminiRequest({ req, userId, sessionId, keyMode, response, 
       sessionId,
       userId || null,
       keyMode,
-      config.gemini.model,
-      config.gemini.model,
+      model || config.gemini.model,
+      model || config.gemini.model,
       req.body?.phase || "generate",
       Boolean(response.ok),
       response.status,
@@ -64,6 +64,47 @@ async function recordGeminiRequest({ req, userId, sessionId, keyMode, response, 
   );
 }
 
+function shouldRetryWithNextSharedKey(response, body) {
+  if (!response || response.ok || response.status !== 429) return false;
+  const text = JSON.stringify(body || {});
+  return /quota|credit|prepayment|depleted|resource_exhausted|rate.?limit|too many/i.test(text);
+}
+
+async function callGeminiWithSharedKeyFallback({ contents, generationConfig }) {
+  const entries = config.gemini.apiKeyEntries;
+  let lastResult = null;
+  let usedEntry = null;
+  const attempts = [];
+
+  for (const [index, entry] of entries.entries()) {
+    const result = await callGemini({
+      apiKey: entry.apiKey,
+      contents,
+      generationConfig,
+      apiBase: entry.apiBase,
+      model: entry.model,
+      apiFormat: entry.apiFormat,
+    });
+    lastResult = result;
+    usedEntry = entry;
+    attempts.push({
+      keyIndex: index + 1,
+      provider: entry.provider,
+      keyHash: hashText(entry.apiKey),
+      status: result.response.status,
+      ok: result.response.ok,
+      errorCode: result.body?.error?.code || result.body?.error?.status || null,
+      retryable: shouldRetryWithNextSharedKey(result.response, result.body),
+    });
+
+    if (result.response.ok || !shouldRetryWithNextSharedKey(result.response, result.body)) {
+      return { ...result, attempts, usedEntry };
+    }
+  }
+
+  return { ...lastResult, attempts, usedEntry };
+}
+
 router.post("/gemini", async (req, res) => {
   const { contents, generationConfig = {}, userApiKey = "", reportMode = "unknown" } = req.body || {};
   if (!Array.isArray(contents) || contents.length === 0) {
@@ -80,8 +121,8 @@ router.post("/gemini", async (req, res) => {
   }
 
   const keyMode = userApiKey ? "personal" : "shared";
-  const apiKey = userApiKey || config.gemini.apiKey;
-  if (!apiKey) {
+  const apiKeyCount = userApiKey ? 1 : config.gemini.apiKeyEntries.length;
+  if (apiKeyCount === 0) {
     await recordAuditLog(req, {
       userId: currentUser?.id,
       eventType: "gemini_request",
@@ -100,8 +141,16 @@ router.post("/gemini", async (req, res) => {
   const sessionId = await createSession({ userId: currentUser?.id, keyMode, reportMode });
   let response;
   let body;
+  let keyAttempts = [];
+  let usedModel = config.gemini.model;
   try {
-    ({ response, body } = await callGemini({ apiKey, contents, generationConfig }));
+    if (keyMode === "shared") {
+      const result = await callGeminiWithSharedKeyFallback({ contents, generationConfig });
+      ({ response, body, attempts: keyAttempts } = result);
+      usedModel = result.usedEntry?.model || config.gemini.model;
+    } else {
+      ({ response, body } = await callGemini({ apiKey: userApiKey, contents, generationConfig }));
+    }
   } catch (error) {
     await query("UPDATE usage_sessions SET status = 'failed', completed_at = now() WHERE id = $1", [sessionId]);
     await recordAuditLog(req, {
@@ -125,7 +174,7 @@ router.post("/gemini", async (req, res) => {
   const cost = keyMode === "shared" ? estimateCost(tokens) : { costUsd: 0, costKrw: 0 };
 
   try {
-    await recordGeminiRequest({ req, userId: currentUser?.id, sessionId, keyMode, response, body, tokens, cost });
+    await recordGeminiRequest({ req, userId: currentUser?.id, sessionId, keyMode, response, body, tokens, cost, model: usedModel });
   } catch (error) {
     await recordAuditLog(req, {
       userId: currentUser?.id,
@@ -153,12 +202,13 @@ router.post("/gemini", async (req, res) => {
     metadata: {
       keyMode,
       reportMode,
-      requestedModel: config.gemini.model,
+      requestedModel: usedModel,
       httpStatus: response.status,
       inputTokens: Math.round(tokens.inputTokens),
       outputTokens: Math.round(tokens.outputTokens),
       costKrw: cost.costKrw,
       phase: req.body?.phase || "generate",
+      sharedKeyAttempts: keyAttempts,
     },
   });
 

@@ -1,6 +1,12 @@
 const DEFAULT_GEMINI_API_BASE = "https://monogpt.kr/api/monorouter/v1/gemini";
 const requestedModel = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 
+function normalizeGeminiModel(model) {
+  return ["gemini-2.5-flash-lite", "gemini-3.1-flash-lite"].includes(model)
+    ? "gemini-3.5-flash-lite"
+    : model;
+}
+
 function numberFromEnv(name, fallback) {
   const value = Number(process.env[name]);
   return Number.isFinite(value) ? value : fallback;
@@ -13,16 +19,59 @@ function listFromEnv(name) {
     .filter(Boolean);
 }
 
+function defaultGeminiApiFormat(provider, apiBase) {
+  const value = `${provider || ""} ${apiBase || ""}`;
+  return /cafe24|chat\/completions|\/api\/v1/i.test(value) ? "openai" : "gemini";
+}
+
+function defaultGeminiModelForProvider(provider, model) {
+  return /cafe24/i.test(provider || "") ? "google/gemini-2.5-flash" : model;
+}
+
+function geminiApiKeyEntries() {
+  const keys = listFromEnv("GEMINI_API_KEYS");
+  const providers = listFromEnv("GEMINI_API_KEY_PROVIDERS");
+  const bases = listFromEnv("GEMINI_API_BASES");
+  const models = listFromEnv("GEMINI_API_KEY_MODELS");
+  const formats = listFromEnv("GEMINI_API_KEY_FORMATS");
+  const fallbackBase = process.env.GEMINI_API_BASE || DEFAULT_GEMINI_API_BASE;
+  const fallbackModel = normalizeGeminiModel(requestedModel);
+  const entries = keys.map((apiKey, index) => {
+    const provider = providers[index] || `shared-${index + 1}`;
+    const apiBase = bases[index] || fallbackBase;
+    return {
+      apiKey,
+      provider,
+      apiBase,
+      apiFormat: formats[index] || defaultGeminiApiFormat(provider, apiBase),
+      model: normalizeGeminiModel(models[index] || defaultGeminiModelForProvider(provider, fallbackModel)),
+    };
+  });
+
+  const legacyApiKey = process.env.GEMINI_API_KEY || "";
+  if (legacyApiKey && !entries.some((entry) => entry.apiKey === legacyApiKey)) {
+    const provider = process.env.GEMINI_API_KEY_PROVIDER || "legacy";
+    entries.push({
+      apiKey: legacyApiKey,
+      provider,
+      apiBase: fallbackBase,
+      apiFormat: process.env.GEMINI_API_KEY_FORMAT || defaultGeminiApiFormat(provider, fallbackBase),
+      model: fallbackModel,
+    });
+  }
+
+  return entries;
+}
+
 module.exports = {
   port: numberFromEnv("PORT", 3000),
   databaseUrl: process.env.DATABASE_URL || "",
   sessionSecret: process.env.SESSION_SECRET || "local-dev-session-secret",
   gemini: {
-    model: ["gemini-2.5-flash-lite", "gemini-3.1-flash-lite"].includes(requestedModel)
-      ? "gemini-3.5-flash-lite"
-      : requestedModel,
+    model: normalizeGeminiModel(requestedModel),
     apiBase: process.env.GEMINI_API_BASE || DEFAULT_GEMINI_API_BASE,
     apiKey: process.env.GEMINI_API_KEY || "",
+    apiKeyEntries: geminiApiKeyEntries(),
     thinkingBudget: numberFromEnv("GEMINI_THINKING_BUDGET", 2048),
     usdToKrw: numberFromEnv("USD_TO_KRW", 1400),
     inputUsdPerMillion: numberFromEnv("GEMINI_INPUT_USD_PER_MILLION", 0.3),

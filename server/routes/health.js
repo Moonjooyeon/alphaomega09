@@ -9,7 +9,8 @@ router.get("/health", async (_req, res) => {
     ok: true,
     service: "alphaomega",
     databaseConfigured: Boolean(pool),
-    geminiConfigured: Boolean(config.gemini.apiKey),
+    geminiConfigured: config.gemini.apiKeyEntries.length > 0,
+    geminiKeyCount: config.gemini.apiKeyEntries.length,
     model: config.gemini.model,
   };
 

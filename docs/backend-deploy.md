@@ -21,8 +21,19 @@ Docker Compose 기준 백엔드 배포 메모.
 - `POST /api/toss/login`: 토스 로그인 인가 코드 교환 및 서비스 세션 발급
 - `GET /api/me`: 현재 로그인 사용자 확인
 
-`POST /api/gemini`은 요청 본문에 `userApiKey`가 있으면 개인 key를 쓰고, 없으면 서버 환경변수 `GEMINI_API_KEY`를 사용한다.
-운영 `GEMINI_API_KEY`는 MonoGPT Gemini 라우터 key를 기준으로 둔다.
+`POST /api/gemini`은 요청 본문에 `userApiKey`가 있으면 개인 key를 쓰고, 없으면 서버 환경변수 `GEMINI_API_KEYS` 또는 `GEMINI_API_KEY`를 사용한다.
+운영 key는 MonoGPT Gemini 라우터 key를 기준으로 둔다. 여러 공용 key를 콤마로 넣으면 한도 초과 계열 429 응답 시 다음 key로 자동 재시도한다.
+두 번째 key가 Cafe24에서 관리되는 key라면 `GEMINI_API_KEY_PROVIDERS=monogpt,cafe24`처럼 provider 라벨을 함께 넣어 감사 로그에서 구분한다.
+Cafe24 LLM Router는 OpenAI 호환 API라서 두 번째 base URL은 `https://llm-router.cafe24.com/api/v1`, format은 `openai`로 둔다.
+provider별 라우터 주소나 모델이 다르면 `GEMINI_API_BASES`, `GEMINI_API_KEY_MODELS`, `GEMINI_API_KEY_FORMATS`를 콤마 순서에 맞춰 넣을 수 있다.
+
+```env
+GEMINI_API_KEYS=monogpt_key,cafe24_key
+GEMINI_API_KEY_PROVIDERS=monogpt,cafe24
+GEMINI_API_BASES=https://monogpt.kr/api/monorouter/v1/gemini,https://llm-router.cafe24.com/api/v1
+GEMINI_API_KEY_MODELS=gemini-3.5-flash-lite,google/gemini-2.5-flash
+GEMINI_API_KEY_FORMATS=gemini,openai
+```
 현재 구현은 공용 key 요청 로그, 인앱 결제 이용권 발급, 결과 확정 후 이용권 차감을 연결해둔 상태다.
 전체 공용 key 예산 제한은 현재 적용하지 않는다.
 로그인된 요청은 `Authorization: Bearer <token>` 헤더로 `usage_sessions`, `gemini_requests`에 `user_id`를 연결한다.
@@ -31,7 +42,7 @@ Docker Compose 기준 백엔드 배포 메모.
 
 ```bash
 cp .env.example .env
-# .env에 POSTGRES_PASSWORD, SESSION_SECRET, GEMINI_API_KEY, Toss mTLS 경로 입력
+# .env에 POSTGRES_PASSWORD, SESSION_SECRET, GEMINI_API_KEYS 또는 GEMINI_API_KEY, Toss mTLS 경로 입력
 # Apple: ./secrets/apple/AuthKey.p8
 # Google: ./secrets/google/service-account.json
 docker compose up -d --build
@@ -57,6 +68,11 @@ Host nginx를 직접 쓸 때만 `127.0.0.1:19090`, `127.0.0.1:19091`로 프록�
 - `POSTGRES_PASSWORD`
 - `SESSION_SECRET`
 - `GEMINI_API_KEY`
+- `GEMINI_API_KEYS`
+- `GEMINI_API_KEY_PROVIDERS`
+- `GEMINI_API_BASES`
+- `GEMINI_API_KEY_MODELS`
+- `GEMINI_API_KEY_FORMATS`
 - `GEMINI_API_BASE`
 - `GEMINI_MODEL`
 - `USD_TO_KRW`
