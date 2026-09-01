@@ -45,7 +45,8 @@ const MAX_GENERATION_ATTEMPTS = 3;
 const MAX_EXPORT_CANVAS_SIDE = 8192;
 const SITE_CODES = Object.keys(SITES);
 const NON_DEFAULT_SITE_CODES = SITE_CODES.filter((code) => code !== "NP");
-const GENERIC_SITE_CODES = SITE_CODES.filter((code) => !["NP", "CL"].includes(code));
+const LOOP_PRONE_SITE_CODES = new Set(["NP", "CL", "ME"]);
+const GENERIC_SITE_CODES = SITE_CODES.filter((code) => !LOOP_PRONE_SITE_CODES.has(code));
 const SITE_ALIASES = [
   [/NECK|목덜미|뒷목/i, "NP"],
   [/CLAVICLE|쇄골/i, "CL"],
@@ -57,6 +58,13 @@ const SITE_ALIASES = [
   [/ANKLE|발목/i, "AN"],
   [/PALM|손바닥/i, "PL"],
   [/HAIRLINE|머리카락|목선/i, "HL"],
+  [/RING|FINGER|약지|손가락/i, "IF"],
+  [/ELBOW|팔꿈치/i, "EL"],
+  [/SHOULDER|어깨/i, "SH"],
+  [/SPINE|척추/i, "SP"],
+  [/WAIST|허리/i, "WA"],
+  [/KNEE|무릎/i, "KN"],
+  [/JAW|CHIN|턱/i, "JA"],
 ];
 const SITE_EVIDENCE = {
   NP: /목덜미|뒷목|목선|목 뒤|목 뒤쪽|neck/i,
@@ -69,6 +77,14 @@ const SITE_EVIDENCE = {
   AN: /발목|복사뼈|ankle/i,
   PL: /손바닥|손금|palm/i,
   HL: /헤어라인|머리카락|목선|hairline/i,
+  IF: /약지|손가락|반지|finger|ring/i,
+  EL: /팔꿈치|팔 안쪽|elbow/i,
+  SH: /어깨|기댐|shoulder/i,
+  SP: /척추|등줄기|spine/i,
+  WA: /허리|waist/i,
+  KN: /무릎|knee/i,
+  JA: /턱|jaw|chin/i,
+  SL: /목 아래|숨|그림자/i,
 };
 const TEXT_FIXES = [
   [/숨숨오감/g, "숨과 오감"],
@@ -94,6 +110,68 @@ const FALLBACK_COPY = {
   management: "해당 대응은 주기 반응을 늦추기 위한 임시 조치로 기록된다. 그러나 체향 자극이 겹치면 버티던 습관이 역으로 반응을 증폭시킨다.",
   examiner: "오만하게 굳은 시선 아래에서 가장 먼저 무너지는 것은 호흡 간격이다. 기록상 통제력은 남아 있으나, 체향 자극 앞에서는 몸의 방향이 이미 답을 말한다.",
   traitNote: "특정 자극 앞에서는 평소의 억제 패턴이 유의미하게 흔들린다. 아닌 척 유지하던 습관이 손끝과 동선에 먼저 새어 나와 관찰 기록에 남는다.",
+};
+const IMPRINT_SITE_COPY = {
+  WR: {
+    rationale: "손목 안쪽은 맥박과 구속 반응이 동시에 드러나는 자리라, 숨기려 할수록 먼저 들킨다. 손을 빼려는 습관이 오히려 상대의 체향을 더 오래 붙잡게 만들어 해당 부위로 확정된다.",
+    note: "가볍게 스치기만 해도 손끝이 굳고 맥박이 급격히 튀어 오른다. 상대가 사라지면 같은 손목을 문지르는 버릇과 옷소매 안쪽에 밴 향을 끝내 버리지 못한다.",
+  },
+  SC: {
+    rationale: "견갑골 사이는 본인이 직접 확인할 수 없어 상대의 기억에 맡겨지는 자리다. 등을 돌린 순간에도 소유 흔적이 남아, 도망치는 동선까지 기록되는 부위로 판정된다.",
+    note: "뒤에서 숨이 닿으면 어깨가 먼저 잠기고 허리가 낮게 무너진다. 상대가 사라진 뒤에도 등 쪽 옷감을 버리지 못해 같은 냄새를 확인하는 행동이 반복된다.",
+  },
+  TH: {
+    rationale: "왼쪽 가슴은 심박 변화가 가장 노골적으로 드러나는 자리라 거짓 안정이 오래 버티지 못한다. 체면을 지키려는 개체일수록 옷감 아래의 박동이 먼저 항복해 해당 부위로 잡힌다.",
+    note: "손끝이 가까워지는 순간 숨이 끊기고 심장 쪽 열감이 빠르게 번진다. 상대가 사라지면 가슴팍에 닿았던 천 조각이나 눌린 단추를 버리지 못한다.",
+  },
+  RB: {
+    rationale: "옆구리는 피하려고 몸을 트는 순간 가장 먼저 드러나는 급소다. 밀어내려던 반응이 그대로 빈틈이 되어, 도망과 허용이 동시에 기록되는 부위로 확정된다.",
+    note: "스치면 웃음도 신음도 아닌 짧은 숨이 새고 몸이 반사적으로 접힌다. 상대가 사라지면 옆구리에 남은 손자국을 확인하며 그날의 거리감을 반복해서 되짚는다.",
+  },
+  AN: {
+    rationale: "발목 안쪽은 도망치려던 방향과 실패한 걸음이 동시에 남는 자리다. 끝까지 멀어지려는 개체일수록 보폭이 먼저 무너져, 이동 통제의 각인점으로 판정된다.",
+    note: "발목을 잡히는 순간 무릎 힘이 빠지고 도망가던 리듬이 끊긴다. 상대가 사라지면 같은 신발끈과 발목에 남은 압박감을 버리지 못해 자꾸 멈춰 선다.",
+  },
+  PL: {
+    rationale: "손바닥은 쥐면 감출 수 있지만 펴는 순간 가장 확실히 들키는 자리다. 닿았던 감각을 지우려는 손버릇이 반복되어, 접촉 기억의 각인점으로 확정된다.",
+    note: "손이 맞닿으면 손금 사이로 열이 고이고 쥐었던 힘이 급격히 풀린다. 상대가 사라지면 빈 손바닥을 접었다 펴며 마지막 체온을 끝내 놓지 못한다.",
+  },
+  HL: {
+    rationale: "뒷목 머리카락 선은 완전히 목덜미를 내어주지 못한 억제와 이미 들킨 항복이 겹치는 자리다. 머리카락을 넘기는 사소한 습관이 신호가 되어 해당 부위로 판정된다.",
+    note: "머리카락이 걷히는 순간 숨이 먼저 얕아지고 목선 위로 열감이 치민다. 상대가 사라지면 빗이나 묶은 끈에 남은 향을 버리지 못해 같은 동작을 반복한다.",
+  },
+  IF: {
+    rationale: "약지 안쪽은 누구의 것인지 말하지 않아도 표시가 남는 자리라, 관계를 부정할수록 더 선명해진다. 반지처럼 보이는 습관과 손을 감추는 동작이 겹쳐 해당 부위로 판정된다.",
+    note: "손가락이 맞물리면 약지 안쪽부터 열이 올라 손 전체가 느리게 풀린다. 상대가 사라지면 빈손을 쥐었다 펴며 끼지 않은 반지의 감각을 끝내 버리지 못한다.",
+  },
+  EL: {
+    rationale: "팔꿈치 안쪽은 방어하듯 팔을 접는 순간 가장 깊이 감춰지는 자리다. 스스로를 보호하려는 자세가 오히려 항복의 접힘으로 남아 해당 부위로 확정된다.",
+    note: "팔 안쪽을 스치면 접어 숨기던 힘이 빠지고 호흡이 짧게 끊긴다. 상대가 사라지면 소매 안쪽을 붙잡은 채 접힌 자리에 남은 압박을 반복해서 확인한다.",
+  },
+  SH: {
+    rationale: "어깨선은 밀어내는 손과 기대는 무게가 동시에 남는 자리라, 관계의 우위가 가장 빨리 들킨다. 멀쩡히 서려는 개체일수록 한쪽 어깨가 먼저 기울어 해당 부위로 판정된다.",
+    note: "어깨에 체온이 얹히면 밀어내던 자세가 늦고 기대는 방향이 먼저 정해진다. 상대가 사라지면 겉옷의 어깨선을 털지 못하고 같은 무게를 되짚는다.",
+  },
+  SP: {
+    rationale: "척추선은 통제를 세워 버티는 개체의 자존심이 한 줄로 무너지는 자리다. 등을 곧게 편 자세가 오히려 가장 긴 취약부로 드러나 해당 부위로 확정된다.",
+    note: "등줄기를 따라 숨이 내려앉으면 꼿꼿하던 자세가 천천히 흐트러진다. 상대가 사라지면 등을 세우는 습관만 남아 닿았던 방향을 계속 의식한다.",
+  },
+  WA: {
+    rationale: "허리 뒤는 붙잡히지 않았다고 말해도 몸의 방향이 먼저 기억하는 자리다. 도망치던 동선이 한 손의 압력 앞에서 꺾인 기록으로 남아 해당 부위로 판정된다.",
+    note: "허리 뒤에 손이 가까워지면 한 박자 늦게 피하려다 오히려 몸이 돌아선다. 상대가 사라지면 허리춤에 밴 향과 구겨진 옷자락을 끝내 정리하지 못한다.",
+  },
+  KN: {
+    rationale: "무릎 뒤는 끝까지 서 있으려는 의지가 가장 조용히 꺾이는 자리다. 버티는 척한 시간이 길수록 다리의 힘이 먼저 빠져 해당 부위로 확정된다.",
+    note: "무릎 뒤가 스치면 균형이 흔들리고 도망칠 수 있다는 착각이 먼저 끊긴다. 상대가 사라지면 주저앉았던 자리와 접힌 천의 감각을 오래 버리지 못한다.",
+  },
+  JA: {
+    rationale: "턱 아래는 고개를 들지 숙일지 선택하는 순간 반항과 항복이 동시에 드러나는 자리다. 시선을 피하려는 버릇이 턱 끝에서 멈춰 해당 부위로 판정된다.",
+    note: "턱 아래를 들어 올리는 기척만으로 말문이 끊기고 숨이 목에 걸린다. 상대가 사라지면 고개를 숙인 각도와 턱 끝에 남은 온기를 계속 되풀이한다.",
+  },
+  SL: {
+    rationale: "목 아래 그림자는 목덜미와 쇄골 사이에서 끝까지 이름 붙이지 못한 애매한 항복이 남는 자리다. 숨을 참는 버릇이 그 경계에 고여 해당 부위로 확정된다.",
+    note: "목 아래로 시선이 닿으면 삼킨 숨이 느리게 풀리고 옷깃이 먼저 흐트러진다. 상대가 사라지면 가리지도 드러내지도 못한 그 경계만 반복해서 만진다.",
+  },
 };
 
 function makeChargeKey() {
@@ -209,17 +287,27 @@ function normalizeSiteCode(code = "") {
 }
 
 function pickVariedSiteCode(subjects, answer, currentCode, report) {
-  const evidence = [
+  const sourceEvidence = [
     answer,
     ...subjects.flatMap((subject) => [subject?.name, subject?.line]),
+  ].join(" ");
+  const generatedEvidence = [
     report?.imprint?.rationale,
     report?.imprint?.note,
   ].join(" ");
+  const evidence = `${sourceEvidence} ${generatedEvidence}`;
   const normalized = normalizeSiteCode(currentCode);
-  if (SITES[normalized] && SITE_EVIDENCE[normalized]?.test(evidence)) return normalized;
-  if (SITES[normalized] && !["NP", "CL"].includes(normalized)) return normalized;
+  if (SITES[normalized] && !LOOP_PRONE_SITE_CODES.has(normalized)) return normalized;
+  if (SITES[normalized] && SITE_EVIDENCE[normalized]?.test(sourceEvidence)) return normalized;
   const pool = GENERIC_SITE_CODES.length ? GENERIC_SITE_CODES : NON_DEFAULT_SITE_CODES;
   return pool[stableHash(`${evidence}:${normalized}`) % pool.length] || "WR";
+}
+
+function alignImprintCopyToSite(imprint, siteCode) {
+  const copy = IMPRINT_SITE_COPY[siteCode];
+  if (!copy) return;
+  imprint.rationale = copy.rationale;
+  imprint.note = copy.note;
 }
 
 function ensureText(object, key, fallback) {
@@ -273,7 +361,11 @@ function normalizeReport(rawReport, subjects, answer) {
   }
 
   if (report?.imprint) {
+    const originalSiteCode = normalizeSiteCode(report.imprint.site_code);
     report.imprint.site_code = pickVariedSiteCode(pairSubjects, answer, report.imprint.site_code, report);
+    if (report.imprint.site_code !== originalSiteCode && LOOP_PRONE_SITE_CODES.has(originalSiteCode)) {
+      alignImprintCopyToSite(report.imprint, report.imprint.site_code);
+    }
 
     if (pairSubjects.length >= 2 && report.imprint.fixation !== "미형성") {
       if (answer === "A→B") {
@@ -362,6 +454,7 @@ function hasCompleteReport(report, solo) {
       ) &&
       report.cross_reaction &&
       report.imprint &&
+      SITES[report.imprint.site_code] &&
       hasTwoSentences(cycle.heat) &&
       hasTwoSentences(cycle.rut) &&
       hasTwoSentences(cycle.together) &&
@@ -1217,7 +1310,7 @@ export default function GonadalReport() {
 
 [비대칭 반응 (A→B / B→A) 및 각인 규칙]
 - 완벽한 비대칭: 한쪽이 향만으로 공간을 짓누르며 맹수처럼 여유롭게 옭아매면, 다른 쪽은 밭은 숨을 토해내며 생리적 쾌감과 공포에 다리가 풀려야 한다. 양방향의 권력/본능 불균형을 반드시 서술하라.
-- 목덜미/쇄골 루프 엄금. 각인 부위는 개체의 억압 기제에 맞춰 손목 안쪽(구속/맥박), ME(유양돌기·귓속말/열기), SC(견갑골 사이·은밀한 소유), AN(발목 안쪽·도망 불가) 등으로 다채롭게 배정하라.
+- 목덜미/쇄골/귀 뒤 루프 엄금. 각인 부위는 개체의 억압 기제에 맞춰 손목 안쪽(구속/맥박), 약지 안쪽(소유의 부정), 팔꿈치 안쪽(방어의 접힘), 견갑골 사이(등 돌린 소유), 왼쪽 가슴(심박), 옆구리(피하다 드러나는 급소), 발목 안쪽(도망 실패), 손바닥(접촉 기억), 어깨선(기대는 무게), 척추선(통제 붕괴), 허리 뒤(붙잡힌 방향), 무릎 뒤(버티다 꺾임), 턱 아래(반항과 항복) 등으로 다채롭게 배정하라.
 - 각인 부위는 스치기만 해도 전신이 튀어 오르듯 쾌감에 무너지는 가장 예민한 성감대이자 스위치다. 닿지 않으면 살을 파고드는 듯한 환상통에 미쳐가고, 닿았을 땐 수치심도 잊은 채 헐떡이며 굴복한다.
 - 각인 부위 설명에는 반드시 "왜 그 부위인지"와 "상대가 사라지면 무엇을 못 버리는지"를 함께 넣는다. 예: 손목 안쪽이면 맥박 확인 습관, 발목이면 도망 실패의 흔적.
 
@@ -1286,7 +1379,7 @@ cycle_profile (단일 꼴포인트):
 - 출력 직전에 JSON을 한 번 파싱 가능한 형태로 검사한다. 쉼표 누락, 따옴표 누락, 주석, 코드펜스, 앞뒤 설명은 모두 실패다.
 - evidence는 반드시 제출된 한 줄 설명이나 관찰 가능한 이미지 단서에서 온 짧은 구절만 쓴다.
 - from/to/name에는 제출된 이름을 한 글자도 바꾸지 말고 그대로 쓴다. 임의 자모, 별명, 반복 음절을 붙이지 마라.
-- site_code는 반드시 NP, CL, WR, SC, ME, TH, RB, AN, PL, HL 중 하나만 쓴다. NECK-01 같은 임의 코드를 만들지 마라.
+- site_code는 반드시 ${SITE_CODES.join(", ")} 중 하나만 쓴다. NECK-01 같은 임의 코드를 만들지 마라.
 - 의미가 불명확한 조어, 실수처럼 보이는 반복어, 사전에 없는 결합어를 만들지 마라.
 - solo=false이면 subjects는 반드시 2명이다. solo=true이면 subject는 반드시 1명이며 subjects, cross_reaction, imprint를 만들지 마라.
 - role은 "알파" 또는 "오메가"만, grade는 "극우성" "우성" "열성" "극열성" 중 하나만 쓴다.
@@ -1411,7 +1504,7 @@ ${responseSchemaForMode(solo)}`;
 - 누락된 필드는 빈 값으로 두지 말고 문맥상 가장 가까운 짧은 값으로 채워라.
 - "자동"은 미지정 선택지 문구이므로 최종 JSON 문자열에 남기지 마라.
 - role은 "알파" 또는 "오메가"만, grade는 "극우성" "우성" "열성" "극열성" 중 하나만 쓴다.
-- site_code는 NP, CL, WR, SC, ME, TH, RB, AN, PL, HL 중 하나만 쓴다.
+- site_code는 ${SITE_CODES.join(", ")} 중 하나만 쓴다.
 - 긴 서술 필드는 모두 2문장으로 유지한다. 한 문장짜리 값을 발견하면 같은 의미를 보존한 채 두 번째 관찰 문장을 추가한다.
 - JSON 문자열 내부 실제 줄바꿈은 \\n으로 이스케이프한다.
 
