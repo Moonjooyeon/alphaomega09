@@ -51,8 +51,8 @@ export function imageFileToInlineData(file, maxSize = 1800, quality = 0.92) {
 
 export function describeApiError(status, error) {
   const message = error?.message || "";
-  if (status === 429 && /prepayment credits are depleted/i.test(message)) {
-    return "Gemini 프로젝트의 선불 크레딧이 소진되었습니다. AI Studio에서 결제/크레딧을 충전하거나 다른 API 키로 교체해 주십시오.";
+  if ([402, 429].includes(status) && /credit|prepayment|depleted|insufficient/i.test(message)) {
+    return "공용 Gemini 라우터 크레딧이 소진되었습니다. 서버의 보조 API 키 설정 또는 크레딧 충전 상태를 확인해 주십시오.";
   }
   if (status === 404 && /no longer available|not found/i.test(message)) {
     return "현재 API 키에서 이 Gemini 모델을 사용할 수 없습니다. 서버 재배포가 끝났는지 확인하거나 GEMINI_MODEL 값을 갱신해 주십시오.";

@@ -65,9 +65,9 @@ async function recordGeminiRequest({ req, userId, sessionId, keyMode, response, 
 }
 
 function shouldRetryWithNextSharedKey(response, body) {
-  if (!response || response.ok || response.status !== 429) return false;
+  if (!response || response.ok || ![402, 429, 503].includes(response.status)) return false;
   const text = JSON.stringify(body || {});
-  return /quota|credit|prepayment|depleted|resource_exhausted|rate.?limit|too many/i.test(text);
+  return /quota|credit|insufficient|minimum|prepayment|depleted|resource_exhausted|rate.?limit|too many/i.test(text);
 }
 
 async function callGeminiWithSharedKeyFallback({ contents, generationConfig }) {
