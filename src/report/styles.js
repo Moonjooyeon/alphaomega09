@@ -560,6 +560,33 @@ export const CSS = `
   .gm-pairfig-view{height:220px;}
   .gm-pairfig img{max-height:220px;}
 }
+.gm-exporting .gm{
+  --paper:#fffef9;
+  --form:#fffef9;
+  background:#fffef9 !important;
+  background-image:none !important;
+  padding:28px 16px 80px !important;
+}
+.gm-exporting .gm-sheet{
+  width:880px !important;
+  max-width:880px !important;
+  background:#fffef9 !important;
+  background-image:none !important;
+  background-blend-mode:normal !important;
+  box-shadow:none !important;
+  overflow:visible !important;
+}
+.gm-exporting .gm-examiner,
+.gm-exporting .gm-oneline{
+  background:#fffdf7 !important;
+}
+.gm-exporting .gm-specimens{
+  background:#fffef9 !important;
+}
+.gm-exporting .gm-specimens:before,
+.gm-exporting .gm-specimens:after{
+  mix-blend-mode:normal !important;
+}
 @media print{.gm{background-image:none;}.gm-sheet{background-image:none;}}
 `;
 

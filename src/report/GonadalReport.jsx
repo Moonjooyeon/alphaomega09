@@ -1003,6 +1003,8 @@ export default function GonadalReport() {
     setSavingImage(true);
     setErr("");
     try {
+      document.body.classList.add("gm-exporting");
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       await document.fonts?.ready?.catch?.(() => {});
       const width = Math.ceil(el.scrollWidth);
       const height = Math.ceil(el.scrollHeight);
@@ -1021,6 +1023,9 @@ export default function GonadalReport() {
         windowWidth: width,
         windowHeight: height,
         ignoreElements: (node) => Boolean(node?.classList?.contains("gm-actions")),
+        onclone: (clonedDocument) => {
+          clonedDocument.body.classList.add("gm-exporting");
+        },
       });
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob) throw new Error("empty image blob");
@@ -1050,6 +1055,7 @@ export default function GonadalReport() {
     } catch (error) {
       setErr(`결과 이미지를 저장하지 못했습니다 — ${error?.message || "다시 시도해 주십시오."}`);
     } finally {
+      document.body.classList.remove("gm-exporting");
       setSavingImage(false);
     }
   };
