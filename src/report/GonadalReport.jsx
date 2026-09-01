@@ -1002,30 +1002,48 @@ export default function GonadalReport() {
     if (!el || savingImage) return;
     setSavingImage(true);
     setErr("");
+    let exportHost = null;
     try {
-      document.body.classList.add("gm-exporting");
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const exportSheet = el.cloneNode(true);
+      exportSheet.querySelectorAll(".gm-actions").forEach((node) => node.remove());
+
+      exportHost = document.createElement("div");
+      exportHost.className = "gm gm-exporting";
+      exportHost.setAttribute("aria-hidden", "true");
+      exportHost.style.cssText = [
+        "position:fixed",
+        "left:-12000px",
+        "top:0",
+        "width:912px",
+        "min-height:0",
+        "padding:16px",
+        "background:#fffef9",
+        "pointer-events:none",
+        "overflow:visible",
+        "z-index:-1",
+      ].join(";");
+      exportHost.appendChild(exportSheet);
+      document.body.appendChild(exportHost);
+
       await document.fonts?.ready?.catch?.(() => {});
-      const width = Math.ceil(el.scrollWidth);
-      const height = Math.ceil(el.scrollHeight);
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+      const width = Math.ceil(exportSheet.scrollWidth);
+      const height = Math.ceil(exportSheet.scrollHeight);
       const maxRatio = Math.min(MAX_EXPORT_CANVAS_SIDE / width, MAX_EXPORT_CANVAS_SIDE / height);
       const ratio = Math.max(0.5, Math.min(2, window.devicePixelRatio || 1, maxRatio));
-      const canvas = await html2canvas(el, {
+      const canvas = await html2canvas(exportSheet, {
         allowTaint: true,
-        backgroundColor: "#fcfcf8",
+        backgroundColor: "#fffef9",
         logging: false,
         scale: ratio,
         scrollX: 0,
-        scrollY: -window.scrollY,
+        scrollY: 0,
         useCORS: true,
         width,
         height,
         windowWidth: width,
         windowHeight: height,
-        ignoreElements: (node) => Boolean(node?.classList?.contains("gm-actions")),
-        onclone: (clonedDocument) => {
-          clonedDocument.body.classList.add("gm-exporting");
-        },
       });
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob) throw new Error("empty image blob");
@@ -1055,7 +1073,7 @@ export default function GonadalReport() {
     } catch (error) {
       setErr(`결과 이미지를 저장하지 못했습니다 — ${error?.message || "다시 시도해 주십시오."}`);
     } finally {
-      document.body.classList.remove("gm-exporting");
+      exportHost?.remove();
       setSavingImage(false);
     }
   };

@@ -560,6 +560,7 @@ export const CSS = `
   .gm-pairfig-view{height:220px;}
   .gm-pairfig img{max-height:220px;}
 }
+.gm.gm-exporting,
 .gm-exporting .gm{
   --paper:#fffef9;
   --form:#fffef9;
