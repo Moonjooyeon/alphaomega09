@@ -186,7 +186,10 @@ export const CSS = `
 .gm-save-preview-hd b{font-size:10px;letter-spacing:.18em;color:var(--ink);}
 .gm-save-preview-hd button{border:1px solid var(--grid2);background:transparent;color:var(--ink2);font:inherit;font-size:10px;padding:5px 8px;cursor:pointer;}
 .gm-save-preview p{margin:0 0 9px;font-size:10px;line-height:1.7;color:var(--ink2);}
-.gm-save-preview a{display:block;border:1px solid var(--grid);background:#fffef9;max-height:430px;overflow:auto;}
+.gm-save-preview a{display:block;position:relative;border:1px solid var(--grid);background:#fffef9;max-height:430px;overflow:auto;}
+.gm-save-preview a+a{margin-top:10px;}
+.gm-save-preview a span{position:sticky;top:0;display:block;background:var(--ink);color:var(--form);
+    font-size:9px;letter-spacing:.18em;padding:5px 8px;z-index:1;}
 .gm-save-preview img{display:block;width:100%;height:auto;}
 
 /* loading */

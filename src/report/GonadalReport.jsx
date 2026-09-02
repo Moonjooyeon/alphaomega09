@@ -42,7 +42,7 @@ const GEMINI_TIMEOUT_MS = 70000;
 const PASS_TIMEOUT_MS = 15000;
 const REPAIR_TIMEOUT_MS = 25000;
 const MAX_GENERATION_ATTEMPTS = 3;
-const MAX_EXPORT_CANVAS_SIDE = 8192;
+const SAFE_EXPORT_CANVAS_SIDE = 7200;
 const SITE_CODES = Object.keys(SITES);
 const NON_DEFAULT_SITE_CODES = SITE_CODES.filter((code) => code !== "NP");
 const LOOP_PRONE_SITE_CODES = new Set(["NP", "CL", "ME"]);
@@ -875,13 +875,13 @@ export default function GonadalReport() {
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [savingImage, setSavingImage] = useState(false);
   const [saveNotice, setSaveNotice] = useState("");
-  const [savedImage, setSavedImage] = useState(null);
+  const [savedImages, setSavedImages] = useState([]);
   const [crop, setCrop] = useState(null);
   const [no] = useState(caseNo);
   const sheetRef = useRef(null);
   const requestSeq = useRef(0);
   const activeController = useRef(null);
-  const savedImageUrl = useRef(null);
+  const savedImageUrls = useRef([]);
   const files = [useRef(null), useRef(null)];
   const pairFile = useRef(null);
   const solo = mode === "개인 감별";
@@ -894,16 +894,14 @@ export default function GonadalReport() {
   const outOfPasses = isAuthenticated && !passBusy && Boolean(passInfo) && remainingUses < 1;
 
   function clearSavedImage() {
-    if (savedImageUrl.current) {
-      URL.revokeObjectURL(savedImageUrl.current);
-      savedImageUrl.current = null;
-    }
-    setSavedImage(null);
+    savedImageUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    savedImageUrls.current = [];
+    setSavedImages([]);
   }
 
   useEffect(() => {
     return () => {
-      if (savedImageUrl.current) URL.revokeObjectURL(savedImageUrl.current);
+      savedImageUrls.current.forEach((url) => URL.revokeObjectURL(url));
     };
   }, []);
 
@@ -1116,8 +1114,8 @@ export default function GonadalReport() {
     clearSavedImage();
     let exportHost = null;
     try {
-      const exportSheet = el.cloneNode(true);
-      exportSheet.querySelectorAll(".gm-actions").forEach((node) => node.remove());
+      const measureSheet = el.cloneNode(true);
+      measureSheet.querySelectorAll(".gm-actions").forEach((node) => node.remove());
 
       exportHost = document.createElement("div");
       exportHost.className = "gm gm-exporting";
@@ -1134,40 +1132,71 @@ export default function GonadalReport() {
         "overflow:visible",
         "z-index:-1",
       ].join(";");
-      exportHost.appendChild(exportSheet);
+      exportHost.appendChild(measureSheet);
       document.body.appendChild(exportHost);
 
       await document.fonts?.ready?.catch?.(() => {});
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-      const width = Math.ceil(exportSheet.scrollWidth);
-      const height = Math.ceil(exportSheet.scrollHeight);
-      const maxRatio = Math.min(MAX_EXPORT_CANVAS_SIDE / width, MAX_EXPORT_CANVAS_SIDE / height);
-      const ratio = Math.max(0.5, Math.min(2, window.devicePixelRatio || 1, maxRatio));
-      const canvas = await html2canvas(exportSheet, {
-        allowTaint: true,
-        backgroundColor: "#fffef9",
-        logging: false,
-        scale: ratio,
-        scrollX: 0,
-        scrollY: 0,
-        useCORS: true,
-        width,
-        height,
-        windowWidth: width,
-        windowHeight: height,
-      });
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
-      if (!blob) throw new Error("empty image blob");
+      const width = Math.ceil(measureSheet.scrollWidth);
+      const height = Math.ceil(measureSheet.scrollHeight);
+      const baseRatio = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+      const ratio = Math.min(baseRatio, SAFE_EXPORT_CANVAS_SIDE / width);
+      const pageHeight = Math.max(1200, Math.floor(SAFE_EXPORT_CANVAS_SIDE / ratio));
+      const pageCount = Math.max(1, Math.ceil(height / pageHeight));
+      const pages = [];
 
-      const filename = `${no}.png`;
+      for (let index = 0; index < pageCount; index += 1) {
+        const y = index * pageHeight;
+        const sliceHeight = Math.min(pageHeight, height - y);
+        const pageSheet = measureSheet.cloneNode(true);
+        pageSheet.style.margin = "0";
+        pageSheet.style.transform = `translateY(-${y}px)`;
+        pageSheet.style.transformOrigin = "top left";
+        pageSheet.style.width = `${width}px`;
+        pageSheet.style.maxWidth = `${width}px`;
+
+        const pageFrame = document.createElement("div");
+        pageFrame.className = "gm-export-page";
+        pageFrame.style.cssText = [
+          "position:relative",
+          `width:${width}px`,
+          `height:${sliceHeight}px`,
+          "overflow:hidden",
+          "background:#fffef9",
+        ].join(";");
+        pageFrame.appendChild(pageSheet);
+        exportHost.replaceChildren(pageFrame);
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+
+        const canvas = await html2canvas(pageFrame, {
+          allowTaint: true,
+          backgroundColor: "#fffef9",
+          logging: false,
+          scale: ratio,
+          scrollX: 0,
+          scrollY: 0,
+          useCORS: true,
+          width,
+          height: sliceHeight,
+          windowWidth: width,
+          windowHeight: sliceHeight,
+        });
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+        if (!blob) throw new Error("empty image blob");
+        pages.push({
+          blob,
+          filename: pageCount > 1 ? `${no}-${index + 1}of${pageCount}.png` : `${no}.png`,
+        });
+      }
+
       const isAndroid = /Android/i.test(navigator.userAgent || "");
       if (typeof File !== "undefined" && navigator.share) {
-        const file = new File([blob], filename, { type: "image/png" });
-        if (!navigator.canShare || navigator.canShare({ files: [file] })) {
+        const filesToShare = pages.map(({ blob, filename }) => new File([blob], filename, { type: "image/png" }));
+        if (!navigator.canShare || navigator.canShare({ files: filesToShare })) {
           try {
-            await navigator.share({ files: [file], title: "캐릭터 리포트" });
-            setSaveNotice("공유 시트로 저장용 이미지를 전달했습니다.");
+            await navigator.share({ files: filesToShare, title: "캐릭터 리포트" });
+            setSaveNotice(pageCount > 1 ? `공유 시트로 저장용 이미지 ${pageCount}장을 전달했습니다.` : "공유 시트로 저장용 이미지를 전달했습니다.");
             return;
           } catch (error) {
             if (error?.name === "AbortError" && !isAndroid) return;
@@ -1175,31 +1204,40 @@ export default function GonadalReport() {
         }
       }
 
-      const imageUrl = URL.createObjectURL(blob);
+      const preparedImages = pages.map(({ blob, filename }) => ({
+        url: URL.createObjectURL(blob),
+        filename,
+      }));
       let opened = false;
       try {
-        const a = document.createElement("a");
-        a.download = filename;
-        a.href = imageUrl;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
+        preparedImages.forEach(({ url, filename }) => {
+          const a = document.createElement("a");
+          a.download = filename;
+          a.href = url;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        });
       } catch {
         // Android WebView may block synthetic downloads; preview fallback below remains available.
       }
-      try {
-        opened = Boolean(window.open(imageUrl, "_blank", "noopener,noreferrer"));
-      } catch {
-        opened = false;
+      if (preparedImages.length === 1) {
+        try {
+          opened = Boolean(window.open(preparedImages[0].url, "_blank", "noopener,noreferrer"));
+        } catch {
+          opened = false;
+        }
       }
 
-      if (isAndroid || !opened) {
-        savedImageUrl.current = imageUrl;
-        setSavedImage({ url: imageUrl, filename });
-        setSaveNotice("안드로이드에서 자동 저장이 막히면 아래 이미지를 길게 눌러 저장해 주세요.");
+      if (isAndroid || preparedImages.length > 1 || !opened) {
+        savedImageUrls.current = preparedImages.map((image) => image.url);
+        setSavedImages(preparedImages);
+        setSaveNotice(pageCount > 1
+          ? `안드로이드 저장 안정성을 위해 결과를 ${pageCount}장으로 나눴습니다. 아래 이미지를 각각 길게 눌러 저장해 주세요.`
+          : "안드로이드에서 자동 저장이 막히면 아래 이미지를 길게 눌러 저장해 주세요.");
       } else {
         setSaveNotice("저장용 이미지를 새 창으로 열었습니다.");
-        setTimeout(() => URL.revokeObjectURL(imageUrl), 30000);
+        setTimeout(() => preparedImages.forEach((image) => URL.revokeObjectURL(image.url)), 30000);
       }
     } catch (error) {
       setErr(`결과 이미지를 저장하지 못했습니다 — ${error?.message || "다시 시도해 주십시오."}`);
@@ -2305,10 +2343,10 @@ ${parsedResult.candidate.slice(0, 12000)}`;
                 신청서로 돌아가기
               </button>
               {saveNotice && <p className="gm-save-note">{saveNotice}</p>}
-              {savedImage && (
+              {savedImages.length > 0 && (
                 <div className="gm-save-preview">
                   <div className="gm-save-preview-hd">
-                    <b>저장용 이미지 준비 완료</b>
+                    <b>저장용 이미지 {savedImages.length}장 준비 완료</b>
                     <button type="button" onClick={() => {
                       setSaveNotice("");
                       clearSavedImage();
@@ -2317,9 +2355,12 @@ ${parsedResult.candidate.slice(0, 12000)}`;
                     </button>
                   </div>
                   <p>자동 저장이 열리지 않으면 이미지를 길게 눌러 기기에 저장하세요.</p>
-                  <a href={savedImage.url} download={savedImage.filename}>
-                    <img src={savedImage.url} alt="저장용 결과 이미지" />
-                  </a>
+                  {savedImages.map((image, index) => (
+                    <a key={image.url} href={image.url} download={image.filename}>
+                      <span>{savedImages.length > 1 ? `${index + 1}/${savedImages.length}` : "1/1"}</span>
+                      <img src={image.url} alt={`저장용 결과 이미지 ${index + 1}`} />
+                    </a>
+                  ))}
                 </div>
               )}
             </div>
