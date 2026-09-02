@@ -874,11 +874,14 @@ export default function GonadalReport() {
   const [passErr, setPassErr] = useState("");
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [savingImage, setSavingImage] = useState(false);
+  const [saveNotice, setSaveNotice] = useState("");
+  const [savedImage, setSavedImage] = useState(null);
   const [crop, setCrop] = useState(null);
   const [no] = useState(caseNo);
   const sheetRef = useRef(null);
   const requestSeq = useRef(0);
   const activeController = useRef(null);
+  const savedImageUrl = useRef(null);
   const files = [useRef(null), useRef(null)];
   const pairFile = useRef(null);
   const solo = mode === "개인 감별";
@@ -889,6 +892,20 @@ export default function GonadalReport() {
   const remainingUses = Number(passInfo?.totalRemainingUses || 0);
   // 잔여가 0으로 확인된 경우에만 막는다. 조회 전이거나 조회 중이면 막지 않는다.
   const outOfPasses = isAuthenticated && !passBusy && Boolean(passInfo) && remainingUses < 1;
+
+  function clearSavedImage() {
+    if (savedImageUrl.current) {
+      URL.revokeObjectURL(savedImageUrl.current);
+      savedImageUrl.current = null;
+    }
+    setSavedImage(null);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (savedImageUrl.current) URL.revokeObjectURL(savedImageUrl.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!authToken) {
@@ -1095,6 +1112,8 @@ export default function GonadalReport() {
     if (!el || savingImage) return;
     setSavingImage(true);
     setErr("");
+    setSaveNotice("");
+    clearSavedImage();
     let exportHost = null;
     try {
       const exportSheet = el.cloneNode(true);
@@ -1142,27 +1161,46 @@ export default function GonadalReport() {
       if (!blob) throw new Error("empty image blob");
 
       const filename = `${no}.png`;
+      const isAndroid = /Android/i.test(navigator.userAgent || "");
       if (typeof File !== "undefined" && navigator.share) {
         const file = new File([blob], filename, { type: "image/png" });
         if (!navigator.canShare || navigator.canShare({ files: [file] })) {
           try {
             await navigator.share({ files: [file], title: "캐릭터 리포트" });
+            setSaveNotice("공유 시트로 저장용 이미지를 전달했습니다.");
             return;
           } catch (error) {
-            if (error?.name === "AbortError") return;
+            if (error?.name === "AbortError" && !isAndroid) return;
           }
         }
       }
 
       const imageUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.download = filename;
-      a.href = imageUrl;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.open(imageUrl, "_blank", "noopener,noreferrer");
-      setTimeout(() => URL.revokeObjectURL(imageUrl), 30000);
+      let opened = false;
+      try {
+        const a = document.createElement("a");
+        a.download = filename;
+        a.href = imageUrl;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } catch {
+        // Android WebView may block synthetic downloads; preview fallback below remains available.
+      }
+      try {
+        opened = Boolean(window.open(imageUrl, "_blank", "noopener,noreferrer"));
+      } catch {
+        opened = false;
+      }
+
+      if (isAndroid || !opened) {
+        savedImageUrl.current = imageUrl;
+        setSavedImage({ url: imageUrl, filename });
+        setSaveNotice("안드로이드에서 자동 저장이 막히면 아래 이미지를 길게 눌러 저장해 주세요.");
+      } else {
+        setSaveNotice("저장용 이미지를 새 창으로 열었습니다.");
+        setTimeout(() => URL.revokeObjectURL(imageUrl), 30000);
+      }
     } catch (error) {
       setErr(`결과 이미지를 저장하지 못했습니다 — ${error?.message || "다시 시도해 주십시오."}`);
     } finally {
@@ -1221,13 +1259,17 @@ export default function GonadalReport() {
     setStage("input");
     setData(null);
     setErr("");
+    setSaveNotice("");
     setReject("");
     setStep(0);
     setSavingImage(false);
+    clearSavedImage();
   };
 
   async function run() {
     if (stage === "running") return;
+    setSaveNotice("");
+    clearSavedImage();
     if (missing.length) {
       setErr(`미기재 항목이 있습니다 — ${missing.join(" · ")}`);
       return;
@@ -2262,6 +2304,24 @@ ${parsedResult.candidate.slice(0, 12000)}`;
               <button className="gm-again" onClick={backToForm}>
                 신청서로 돌아가기
               </button>
+              {saveNotice && <p className="gm-save-note">{saveNotice}</p>}
+              {savedImage && (
+                <div className="gm-save-preview">
+                  <div className="gm-save-preview-hd">
+                    <b>저장용 이미지 준비 완료</b>
+                    <button type="button" onClick={() => {
+                      setSaveNotice("");
+                      clearSavedImage();
+                    }}>
+                      닫기
+                    </button>
+                  </div>
+                  <p>자동 저장이 열리지 않으면 이미지를 길게 눌러 기기에 저장하세요.</p>
+                  <a href={savedImage.url} download={savedImage.filename}>
+                    <img src={savedImage.url} alt="저장용 결과 이미지" />
+                  </a>
+                </div>
+              )}
             </div>
           )}
         </div>
