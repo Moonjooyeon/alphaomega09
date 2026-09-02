@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { appLogin, IAP } from "@apps-in-toss/web-framework";
+import { appLogin, IAP, File as TossFile } from "@apps-in-toss/web-framework";
 import html2canvas from "html2canvas";
 import { ASSETS } from "./assets.js";
 import { CSS } from "./styles.js";
@@ -22,6 +22,7 @@ import {
 } from "./config.js";
 import {
   DEF_ADJ,
+  blobToBase64,
   caseNo,
   describeApiError,
   imageFileToInlineData,
@@ -43,6 +44,15 @@ const PASS_TIMEOUT_MS = 15000;
 const REPAIR_TIMEOUT_MS = 25000;
 const MAX_GENERATION_ATTEMPTS = 3;
 const SAFE_EXPORT_CANVAS_SIDE = 7200;
+
+/* 토스 앱 밖(브라우저)에서는 window.__appsInTossConstants 가 없어 isSupported()가 throw 한다. */
+function isTossFileSaveSupported() {
+  try {
+    return Boolean(TossFile?.saveBase64?.isSupported?.());
+  } catch {
+    return false;
+  }
+}
 const SITE_CODES = Object.keys(SITES);
 const NON_DEFAULT_SITE_CODES = SITE_CODES.filter((code) => code !== "NP");
 const LOOP_PRONE_SITE_CODES = new Set(["NP", "CL", "ME"]);
@@ -1191,6 +1201,32 @@ export default function GonadalReport() {
       }
 
       const isAndroid = /Android/i.test(navigator.userAgent || "");
+
+      // 토스 앱 WebView 안에서는 웹 저장 경로가 전부 막힌다.
+      // 안드로이드는 navigator.share 미구현, <a download> 무시, blob window.open 차단이라
+      // 네 단계 폴백이 모두 실패한다. 네이티브 저장 브릿지를 가장 먼저 태운다.
+      let nativeSaveError = "";
+      if (isTossFileSaveSupported()) {
+        try {
+          for (const page of pages) {
+            await TossFile.saveBase64({
+              data: await blobToBase64(page.blob),
+              fileName: page.filename,
+              mimeType: "image/png",
+            });
+          }
+          setSaveNotice(
+            pageCount > 1
+              ? `결과 이미지 ${pageCount}장을 기기에 저장했습니다.`
+              : "결과 이미지를 기기에 저장했습니다."
+          );
+          return;
+        } catch (error) {
+          // 권한 거부·미지원 단말은 아래 웹 경로로 내려보낸다.
+          nativeSaveError = error?.message || error?.code || "사유 미상";
+        }
+      }
+
       if (typeof File !== "undefined" && navigator.share) {
         const filesToShare = pages.map(({ blob, filename }) => new File([blob], filename, { type: "image/png" }));
         if (!navigator.canShare || navigator.canShare({ files: filesToShare })) {
@@ -1232,9 +1268,13 @@ export default function GonadalReport() {
       if (isAndroid || preparedImages.length > 1 || !opened) {
         savedImageUrls.current = preparedImages.map((image) => image.url);
         setSavedImages(preparedImages);
-        setSaveNotice(pageCount > 1
-          ? `안드로이드 저장 안정성을 위해 결과를 ${pageCount}장으로 나눴습니다. 아래 이미지를 각각 길게 눌러 저장해 주세요.`
-          : "안드로이드에서 자동 저장이 막히면 아래 이미지를 길게 눌러 저장해 주세요.");
+        setSaveNotice(
+          nativeSaveError
+            ? `기기 저장에 실패했습니다 — ${nativeSaveError}. 아래 이미지를 길게 눌러 저장해 주세요.`
+            : pageCount > 1
+              ? `안드로이드 저장 안정성을 위해 결과를 ${pageCount}장으로 나눴습니다. 아래 이미지를 각각 길게 눌러 저장해 주세요.`
+              : "자동 저장이 막히면 아래 이미지를 길게 눌러 저장해 주세요."
+        );
       } else {
         setSaveNotice("저장용 이미지를 새 창으로 열었습니다.");
         setTimeout(() => preparedImages.forEach((image) => URL.revokeObjectURL(image.url)), 30000);

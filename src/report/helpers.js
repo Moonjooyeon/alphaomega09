@@ -60,6 +60,19 @@ export function describeApiError(status, error) {
   return message || error?.status || "사유 미상";
 }
 
+export function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = String(reader.result).split(",")[1] || "";
+      if (base64) resolve(base64);
+      else reject(new Error("base64 인코딩 실패"));
+    };
+    reader.onerror = () => reject(reader.error || new Error("base64 인코딩 실패"));
+    reader.readAsDataURL(blob);
+  });
+}
+
 export function isLocalPreview() {
   return ["localhost", "127.0.0.1", "0.0.0.0"].includes(window.location.hostname);
 }

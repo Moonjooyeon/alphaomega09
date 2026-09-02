@@ -5,6 +5,6 @@ export default defineConfig({
   brand: {
     primaryColor: "#203f35",
   },
-  permissions: [],
+  permissions: [{ name: "photos", access: "write" }],
   webBundleDir: "dist",
 });
