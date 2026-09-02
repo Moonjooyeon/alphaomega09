@@ -583,6 +583,15 @@ export const CSS = `
   background-image:none !important;
   padding:28px 16px 80px !important;
 }
+/* html2canvas는 복제본에서 animation-duration만 0으로 만들고 animation-delay는 남긴다.
+   .gm-sec 들이 fill-mode:both + 지연 구간에 걸려 opacity:0 으로 캡처되므로 여기서 끊는다. */
+.gm-exporting,
+.gm-exporting *,
+.gm-exporting *:before,
+.gm-exporting *:after{
+  animation:none !important;
+  transition:none !important;
+}
 .gm-exporting .gm-sheet{
   width:880px !important;
   max-width:880px !important;

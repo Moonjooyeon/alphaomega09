@@ -1189,8 +1189,6 @@ export default function GonadalReport() {
           useCORS: true,
           width,
           height: sliceHeight,
-          windowWidth: width,
-          windowHeight: sliceHeight,
         });
         const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
         if (!blob) throw new Error("empty image blob");
