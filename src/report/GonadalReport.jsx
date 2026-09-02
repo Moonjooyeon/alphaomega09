@@ -1150,13 +1150,14 @@ export default function GonadalReport() {
 
       const width = Math.ceil(measureSheet.scrollWidth);
       const height = Math.ceil(measureSheet.scrollHeight);
-      const baseRatio = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
-      const ratio = Math.min(baseRatio, SAFE_EXPORT_CANVAS_SIDE / width);
+      const isAndroid = /Android/i.test(navigator.userAgent || "");
+      const nativeSaveSupported = isTossFileSaveSupported();
+      const baseRatio = isAndroid ? 1 : Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+      const ratio = Math.max(0.75, Math.min(baseRatio, SAFE_EXPORT_CANVAS_SIDE / width));
       const pageHeight = Math.max(1200, Math.floor(SAFE_EXPORT_CANVAS_SIDE / ratio));
       const pageCount = Math.max(1, Math.ceil(height / pageHeight));
-      const pages = [];
 
-      for (let index = 0; index < pageCount; index += 1) {
+      const renderPage = async (index) => {
         const y = index * pageHeight;
         const sliceHeight = Math.min(pageHeight, height - y);
         const pageSheet = measureSheet.cloneNode(true);
@@ -1192,26 +1193,27 @@ export default function GonadalReport() {
         });
         const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
         if (!blob) throw new Error("empty image blob");
-        pages.push({
+        return {
           blob,
           filename: pageCount > 1 ? `${no}-${index + 1}of${pageCount}.png` : `${no}.png`,
-        });
-      }
-
-      const isAndroid = /Android/i.test(navigator.userAgent || "");
+        };
+      };
 
       // 토스 앱 WebView 안에서는 웹 저장 경로가 전부 막힌다.
       // 안드로이드는 navigator.share 미구현, <a download> 무시, blob window.open 차단이라
       // 네 단계 폴백이 모두 실패한다. 네이티브 저장 브릿지를 가장 먼저 태운다.
       let nativeSaveError = "";
-      if (isTossFileSaveSupported()) {
+      if (nativeSaveSupported) {
         try {
-          for (const page of pages) {
+          for (let index = 0; index < pageCount; index += 1) {
+            setSaveNotice(pageCount > 1 ? `이미지 저장 중 ${index + 1}/${pageCount}` : "이미지 저장 중");
+            const page = await renderPage(index);
             await TossFile.saveBase64({
               data: await blobToBase64(page.blob),
               fileName: page.filename,
               mimeType: "image/png",
             });
+            await new Promise((resolve) => setTimeout(resolve, 120));
           }
           setSaveNotice(
             pageCount > 1
@@ -1223,6 +1225,12 @@ export default function GonadalReport() {
           // 권한 거부·미지원 단말은 아래 웹 경로로 내려보낸다.
           nativeSaveError = error?.message || error?.code || "사유 미상";
         }
+      }
+
+      const pages = [];
+      for (let index = 0; index < pageCount; index += 1) {
+        setSaveNotice(pageCount > 1 ? `저장용 이미지 준비 중 ${index + 1}/${pageCount}` : "저장용 이미지 준비 중");
+        pages.push(await renderPage(index));
       }
 
       if (typeof File !== "undefined" && navigator.share) {
