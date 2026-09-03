@@ -2,7 +2,7 @@
   "scripts": {
     "build": "npm run build:web",
     "build:web": "vite build",
-    "build:ait": "VITE_API_BASE_ENDPOINT=https://alphaomega.ashwoodfriends.com/api VITE_GEMINI_ENDPOINT=https://alphaomega.ashwoodfriends.com/api/gemini vite build && ait build",
+    "build:ait": "VITE_API_BASE_ENDPOINT=https://alphaomega.ashwoodfriends.com/api VITE_GEMINI_ENDPOINT=https://alphaomega.ashwoodfriends.com/api/gemini VITE_TOSS_AD_GROUP_ID=ait.v2.live.b5bfb620a5044ad1 vite build && ait build",
     "dev": "node dev-server.mjs",
     "server": "node server/index.js",
     "vite": "vite --host 127.0.0.1"

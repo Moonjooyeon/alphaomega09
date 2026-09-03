@@ -9,6 +9,7 @@ services:
         VITE_TOSS_LOGIN_MOCK: ${VITE_TOSS_LOGIN_MOCK:-false}
         VITE_PURCHASE_MOCK: ${VITE_PURCHASE_MOCK:-false}
         VITE_TOSS_IAP_SKU: ${VITE_TOSS_IAP_SKU:-}
+        VITE_TOSS_AD_GROUP_ID: ${VITE_TOSS_AD_GROUP_ID:-}
     depends_on:
       - backend
     ports:

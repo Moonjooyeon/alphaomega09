@@ -24,8 +24,10 @@ export const GEMINI_PROXY_ENDPOINT = import.meta.env.VITE_GEMINI_ENDPOINT || `${
 export const TOSS_LOGIN_MOCK = import.meta.env.VITE_TOSS_LOGIN_MOCK === "true";
 export const PURCHASE_MOCK = import.meta.env.VITE_PURCHASE_MOCK === "true";
 export const TOSS_IAP_SKU = import.meta.env.VITE_TOSS_IAP_SKU || "";
-export const TOSS_AD_GROUP_ID =
-  import.meta.env.VITE_TOSS_AD_GROUP_ID || "ait-ad-test-interstitial-id";
+// 테스트 광고 ID로 폴백하지 않는다. 값이 비면 광고를 끈다.
+// 폴백을 두면 .env 없는 환경에서 빌드했을 때 테스트 광고가 조용히 출시되고,
+// 번들에 테스트 ID가 남아 있으면 출시 심사에서 반려된다.
+export const TOSS_AD_GROUP_ID = import.meta.env.VITE_TOSS_AD_GROUP_ID || "";
 export const IMG_MODES = ["개별", "페어 1장", "없음"];
 export const MODES = ["페어 감별", "개인 감별"];
 
